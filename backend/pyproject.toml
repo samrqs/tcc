@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "backend"
+version = "0.1.0"
+description = ""
+authors = ["Rafael Ferreira Machado <rafaelf.machado2004@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.11"
+django = "^5.2.6"
+djangorestframework = "^3.16.1"
+python-decouple = "^3.8"
+gunicorn = "^23.0.0"
+psycopg2-binary = "^2.9.10"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
