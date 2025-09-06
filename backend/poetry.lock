@@ -73,6 +73,26 @@ asgiref = ">=3.6"
 django = ">=4.2"
 
 [[package]]
+name = "django-health-check"
+version = "3.20.0"
+description = "Monitor the health of your Django app and its connected services."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "django_health_check-3.20.0-py3-none-any.whl", hash = "sha256:bcb2b8f36f463cead0564a028345c5b17e2a2d18e9cc88ecd611b13a26521926"},
+    {file = "django_health_check-3.20.0.tar.gz", hash = "sha256:cd69ac5facf73fe7241d9492d939b57bd20e24f46c4edea91e6a900bf22c2d8e"},
+]
+
+[package.dependencies]
+Django = ">=4.2"
+
+[package.extras]
+docs = ["sphinx"]
+lint = ["ruff (==0.11.13)"]
+test = ["boto3", "celery", "django-storages", "pytest", "pytest-cov", "pytest-django", "redis"]
+
+[[package]]
 name = "djangorestframework"
 version = "3.16.1"
 description = "Web APIs for Django, made easy."
@@ -586,4 +606,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "d26a8f3f9c4b3ec6a14027c1a25f49ecea56c82ffa9154f42aa669ef2645e3f3"
+content-hash = "b2abadbea69bda5fa1ff66dd7f663ca025d2582791282814ac5e303e25b4c4e9"
