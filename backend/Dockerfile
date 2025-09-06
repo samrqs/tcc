@@ -1,6 +1,6 @@
 # --------- requirements ---------
 
-FROM python:3.12-alpine3.22 as requirements-stage
+FROM python:3.12-alpine3.22 AS requirements-stage
 
 WORKDIR /tmp
 
