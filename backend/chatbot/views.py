@@ -13,8 +13,9 @@ class ChatbotWebhookView(APIView):
         try:
             payload = json.loads(request.body)
             data = payload.get("data")
-            chat_id = data.get("key").get("remoteJid")
             message = data.get("message").get("conversation")
+            chat_id = data.get("key").get("remoteJid")
+            sender_number = chat_id.split("@")[0]
             is_group = chat_id and "@g.us" in chat_id
 
             if is_group:
