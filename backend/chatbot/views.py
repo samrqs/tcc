@@ -1,14 +1,36 @@
+import json
 import logging
 
+from django.http import JsonResponse
 from rest_framework import status
-from rest_framework.response import Response
 from rest_framework.views import APIView
 
-logger = logging.getLogger("webhook")
+logger = logging.getLogger("chatbot")
 
 
 class ChatbotWebhookView(APIView):
     def post(self, request, *args, **kwargs):
-        payload = request.data
-        logger.info(f"Payload recebido: {payload}")
-        return Response({"status": "ok"}, status=status.HTTP_201_CREATED)
+        try:
+            payload = json.loads(request.body)
+            data = payload.get("data")
+            chat_id = data.get("key").get("remoteJid")
+            message = data.get("message").get("conversation")
+            is_group = chat_id and "@g.us" in chat_id
+
+            if is_group:
+                return JsonResponse(
+                    {"status": "success", "message": "Mensagem de grupo ignorada."},
+                    status=status.HTTP_201_CREATED,
+                )
+
+            logger.info(f"Chat ID: {chat_id}")
+            logger.info(f"Mensagem privada recebida: {message}")
+            logger.info(f"Payload recebido: {data}")
+            return JsonResponse({"status": "success"}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Erro ao processar a mensagem: {str(e)}")
+            return JsonResponse(
+                {"status": "error", "message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
