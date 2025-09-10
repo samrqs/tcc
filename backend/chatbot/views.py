@@ -1,11 +1,32 @@
 import json
 import logging
 
+from decouple import config
 from django.http import JsonResponse
+from openai import OpenAI
 from rest_framework import status
 from rest_framework.views import APIView
 
-logger = logging.getLogger("chatbot")
+from .evolution_api import send_whatsapp_message
+
+logger = logging.getLogger(__name__)
+
+client = OpenAI(api_key=config("OPENAI_API_KEY"))
+
+
+def get_chat_response(message):
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": "Você é um chatbot voltado para micro agricultadores.",
+            },
+            {"role": "user", "content": message},
+        ],
+    )
+
+    return completion.choices[0].message.content
 
 
 class ChatbotWebhookView(APIView):
@@ -24,10 +45,11 @@ class ChatbotWebhookView(APIView):
                     status=status.HTTP_201_CREATED,
                 )
 
-            logger.info(f"Chat ID: {chat_id}")
-            logger.info(f"Sender Number: {sender_number}")
-            logger.info(f"Mensagem privada recebida: {message}")
-            logger.info(f"Payload recebido: {data}")
+            response = get_chat_response(message)
+            send_whatsapp_message(
+                sender_number,
+                response,
+            )
             return JsonResponse({"status": "success"}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
