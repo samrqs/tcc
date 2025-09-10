@@ -16,7 +16,7 @@ class ChatbotWebhookView(APIView):
             message = data.get("message").get("conversation")
             chat_id = data.get("key").get("remoteJid")
             sender_number = chat_id.split("@")[0]
-            is_group = chat_id and "@g.us" in chat_id
+            is_group = "@g.us" in chat_id
 
             if is_group:
                 return JsonResponse(
@@ -25,6 +25,7 @@ class ChatbotWebhookView(APIView):
                 )
 
             logger.info(f"Chat ID: {chat_id}")
+            logger.info(f"Sender Number: {sender_number}")
             logger.info(f"Mensagem privada recebida: {message}")
             logger.info(f"Payload recebido: {data}")
             return JsonResponse({"status": "success"}, status=status.HTTP_201_CREATED)
