@@ -1,34 +1,16 @@
 import json
 import logging
-import os
 
-from decouple import config
 from django.http import JsonResponse
-from langchain_community.document_loaders import CSVLoader
-from langchain_community.vectorstores import FAISS
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from rest_framework import status
 from rest_framework.views import APIView
 
+from .chains import get_rag_chain
 from .evolution_api import send_whatsapp_message
 
 logger = logging.getLogger(__name__)
 
-csv_path = os.path.join(os.path.dirname(__file__), "Q&A.csv")
-loader = CSVLoader(file_path=csv_path)
-documents = loader.load()
-embeddings = OpenAIEmbeddings(api_key=config("OPENAI_API_KEY"))
-vector_store = FAISS.from_documents(documents, embeddings)
-retrieval = vector_store.as_retriever()
-
-llm = ChatOpenAI()
-
-template = "Você é um atendente de IA, contexto:{context}, pergunta:{question}"
-prompt = ChatPromptTemplate.from_template(template)
-
-chain = {"context": retrieval, "question": RunnablePassthrough()} | prompt | llm
+conversational_rag_chain = get_rag_chain()
 
 
 class ChatbotWebhookView(APIView):
@@ -47,7 +29,7 @@ class ChatbotWebhookView(APIView):
                     status=status.HTTP_201_CREATED,
                 )
 
-            response = chain.invoke(message)
+            response = conversational_rag_chain.invoke(message)
             send_whatsapp_message(
                 sender_number,
                 response.content,
