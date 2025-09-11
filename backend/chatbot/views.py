@@ -1,9 +1,14 @@
 import json
 import logging
+import os
 
 from decouple import config
 from django.http import JsonResponse
-from openai import OpenAI
+from langchain_community.document_loaders import CSVLoader
+from langchain_community.vectorstores import FAISS
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from rest_framework import status
 from rest_framework.views import APIView
 
@@ -11,22 +16,19 @@ from .evolution_api import send_whatsapp_message
 
 logger = logging.getLogger(__name__)
 
-client = OpenAI(api_key=config("OPENAI_API_KEY"))
+csv_path = os.path.join(os.path.dirname(__file__), "Q&A.csv")
+loader = CSVLoader(file_path=csv_path)
+documents = loader.load()
+embeddings = OpenAIEmbeddings(api_key=config("OPENAI_API_KEY"))
+vector_store = FAISS.from_documents(documents, embeddings)
+retrieval = vector_store.as_retriever()
 
+llm = ChatOpenAI()
 
-def get_chat_response(message):
-    completion = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": "Você é um chatbot voltado para micro agricultadores.",
-            },
-            {"role": "user", "content": message},
-        ],
-    )
+template = "Você é um atendente de IA, contexto:{context}, pergunta:{question}"
+prompt = ChatPromptTemplate.from_template(template)
 
-    return completion.choices[0].message.content
+chain = {"context": retrieval, "question": RunnablePassthrough()} | prompt | llm
 
 
 class ChatbotWebhookView(APIView):
@@ -45,10 +47,10 @@ class ChatbotWebhookView(APIView):
                     status=status.HTTP_201_CREATED,
                 )
 
-            response = get_chat_response(message)
+            response = chain.invoke(message)
             send_whatsapp_message(
                 sender_number,
-                response,
+                response.content,
             )
             return JsonResponse({"status": "success"}, status=status.HTTP_201_CREATED)
 
