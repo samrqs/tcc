@@ -3,9 +3,10 @@ import os
 from decouple import config
 from langchain_community.document_loaders import CSVLoader
 from langchain_community.vectorstores import FAISS
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+from .prompts import prompt
 
 csv_path = os.path.join(os.path.dirname(__file__), "Q&A.csv")
 
@@ -20,8 +21,5 @@ def get_rag_chain():
         model=config("OPENAI_MODEL_NAME"),
         temperature=config("OPENAI_MODEL_TEMPERATURE"),
     )
-
-    template = "Você é um atendente de IA, contexto:{context}, pergunta:{question}"
-    prompt = ChatPromptTemplate.from_template(template)
 
     return {"context": retrieval, "question": RunnablePassthrough()} | prompt | llm
