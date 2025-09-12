@@ -10,8 +10,6 @@ from .evolution_api import send_whatsapp_message
 
 logger = logging.getLogger(__name__)
 
-conversational_rag_chain = get_rag_chain()
-
 
 class ChatbotWebhookView(APIView):
     def post(self, request, *args, **kwargs):
@@ -28,6 +26,8 @@ class ChatbotWebhookView(APIView):
                     {"status": "success", "message": "Mensagem de grupo ignorada."},
                     status=status.HTTP_201_CREATED,
                 )
+
+            conversational_rag_chain = get_rag_chain()
 
             response = conversational_rag_chain.invoke(message)
             send_whatsapp_message(
