@@ -1,6 +1,6 @@
 # --------- requirements ---------
 
-FROM python:3.12-alpine3.22 AS requirements-stage
+FROM python:3.12-slim AS requirements-stage
 
 WORKDIR /tmp
 
@@ -12,7 +12,7 @@ RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
 
 # --------- final image build ---------
-FROM python:3.12-alpine3.22
+FROM python:3.12-slim
 
 WORKDIR /home/python/app
 
