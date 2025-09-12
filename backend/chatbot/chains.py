@@ -16,7 +16,10 @@ def get_rag_chain():
     embeddings = OpenAIEmbeddings(api_key=config("OPENAI_API_KEY"))
     vector_store = FAISS.from_documents(documents, embeddings)
     retrieval = vector_store.as_retriever()
-    llm = ChatOpenAI()
+    llm = ChatOpenAI(
+        model=config("OPENAI_MODEL_NAME"),
+        temperature=config("OPENAI_MODEL_TEMPERATURE"),
+    )
 
     template = "Você é um atendente de IA, contexto:{context}, pergunta:{question}"
     prompt = ChatPromptTemplate.from_template(template)
