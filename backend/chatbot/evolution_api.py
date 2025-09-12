@@ -1,10 +1,10 @@
 import requests
-from decouple import config
 
-
-EVOLUTION_API_URL = config("EVOLUTION_API_URL")
-EVOLUTION_INSTANCE_NAME = config("EVOLUTION_INSTANCE_NAME")
-EVOLUTION_AUTHENTICATION_API_KEY = config("AUTHENTICATION_API_KEY")
+from .config import (
+    EVOLUTION_API_URL,
+    EVOLUTION_AUTHENTICATION_API_KEY,
+    EVOLUTION_INSTANCE_NAME,
+)
 
 
 def send_whatsapp_message(number, text):
