@@ -22,4 +22,4 @@ RUN pip install --no-cache-dir --upgrade -r /home/python/app/requirements.txt
 
 COPY . /home/python/app/
 
-CMD ["gunicorn", "core.wsgi:application", "-w", "4", "-b", "0.0.0.0:8000"]
+CMD ["uvicorn", "core.asgi:application", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
