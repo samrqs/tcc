@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.views import APIView
 
-from .chains import get_rag_chain
+from .chains import get_conversational_rag_chain
 from .evolution_api import send_whatsapp_message
 
 logger = logging.getLogger(__name__)
@@ -27,12 +27,16 @@ class ChatbotWebhookView(APIView):
                     status=status.HTTP_201_CREATED,
                 )
 
-            conversational_rag_chain = get_rag_chain()
+            conversational_rag_chain = get_conversational_rag_chain()
 
-            response = conversational_rag_chain.invoke(message)
+            ai_response = conversational_rag_chain.invoke(
+                input={"input": message},
+                config={"configurable": {"session_id": chat_id}},
+            )["answer"]
+
             send_whatsapp_message(
                 sender_number,
-                response.content,
+                ai_response,
             )
             return JsonResponse({"status": "success"}, status=status.HTTP_201_CREATED)
 
