@@ -30,6 +30,7 @@ uvicorn = "^0.35.0"
 pytest = "^8.4.2"
 pytest-django = "^4.11.1"
 pytest-cov = "^6.3.0"
+pytest-asyncio = "^1.2.0"
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "core.settings"
