@@ -2,23 +2,25 @@ import json
 import logging
 
 from django.http import JsonResponse
+from django.utils.decorators import method_decorator
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-from rest_framework.views import APIView
 
-from .chains import get_rag_chain
-from .evolution_api import send_whatsapp_message
+from .message_buffer import buffer_message
 
 logger = logging.getLogger(__name__)
 
 
-class ChatbotWebhookView(APIView):
-    def post(self, request, *args, **kwargs):
+@method_decorator(csrf_exempt, name="dispatch")
+class ChatbotWebhookView(View):
+    async def post(self, request, *args, **kwargs):
         try:
             payload = json.loads(request.body)
+
             data = payload.get("data")
             message = data.get("message").get("conversation")
             chat_id = data.get("key").get("remoteJid")
-            sender_number = chat_id.split("@")[0]
             is_group = "@g.us" in chat_id
 
             if is_group:
@@ -27,13 +29,11 @@ class ChatbotWebhookView(APIView):
                     status=status.HTTP_201_CREATED,
                 )
 
-            conversational_rag_chain = get_rag_chain()
-
-            response = conversational_rag_chain.invoke(message)
-            send_whatsapp_message(
-                sender_number,
-                response.content,
+            await buffer_message(
+                chat_id=chat_id,
+                message=message,
             )
+
             return JsonResponse({"status": "success"}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
