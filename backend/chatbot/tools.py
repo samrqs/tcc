@@ -6,6 +6,7 @@ from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
 from .config import OPENWEATHER_API_KEY
+from .metrics import track_error, track_rag_search, track_weather_search
 from .vectorstore import get_vectorstore
 
 logger = logging.getLogger(__name__)
@@ -38,32 +39,63 @@ class RAGSearchTool(BaseTool):
 
     def _run(self, query: str, k: int = 3) -> str:
         """Busca informações nos documentos RAG."""
+        logger.info(f"RAG Search iniciado - Query: '{query}', k: {k}")
+
         try:
+            # Track RAG search
+            track_rag_search("general")
+
+            logger.debug("Obtendo vectorstore...")
             vectorstore = get_vectorstore()
             retriever = vectorstore.as_retriever(search_kwargs={"k": k})
+            logger.debug("Vectorstore obtido com sucesso")
 
             # Busca documentos relevantes
+            logger.debug(f"Executando busca por documentos relevantes...")
             docs = retriever.get_relevant_documents(query)
+            logger.info(f"RAG Search - Documentos encontrados: {len(docs)}")
 
             if not docs:
+                logger.warning(
+                    f"RAG Search - Nenhum documento encontrado para query: '{query}'"
+                )
                 return "Não foram encontradas informações relevantes nos documentos."
 
             # Formata as informações encontradas
             results = []
+            logger.debug("Formatando resultados encontrados...")
             for i, doc in enumerate(docs, 1):
                 content = doc.page_content.strip()
+                original_length = len(content)
+
                 if len(content) > 500:
                     content = content[:500] + "..."
+                    logger.debug(
+                        f"Resultado {i}: conteúdo truncado de {original_length} para 500 caracteres"
+                    )
+                else:
+                    logger.debug(
+                        f"Resultado {i}: conteúdo completo com {original_length} caracteres"
+                    )
+
                 results.append(f"Resultado {i}:\n{content}\n")
 
             if not results:
+                logger.warning("RAG Search - Nenhum resultado formatado disponível")
                 return "Não foram encontradas informações relevantes nos documentos."
 
-            logger.info(f"RAG Search - Query: {query}, Results Found: {len(results)}")
+            logger.info(
+                f"RAG Search concluído com sucesso - Query: '{query}', Resultados: {len(results)}"
+            )
 
             return "\n\n".join(results)
 
         except Exception as e:
+            # Track error
+            track_error("rag_search_error", "tools")
+            logger.error(
+                f"Erro no RAG Search - Query: '{query}', Erro: {str(e)}", exc_info=True
+            )
             return f"Erro ao buscar nos documentos: {str(e)}"
 
     async def _arun(self, query: str, k: int = 3) -> str:
@@ -99,7 +131,11 @@ class WeatherTool(BaseTool):
     def _run(self, location: str = "Parelheiros,SP,BR") -> str:
         """Consulta informações meteorológicas."""
         try:
+            # Track weather search
+            track_weather_search(location)
+
             if not OPENWEATHER_API_KEY:
+                track_error("missing_api_key", "weather_tool")
                 return "API key do OpenWeatherMap não configurada. Entre em contato com o administrador."
 
             # URL da API OpenWeatherMap
@@ -114,12 +150,15 @@ class WeatherTool(BaseTool):
             response = requests.get(url, params=params, timeout=10)
 
             if response.status_code == 401:
+                track_error("api_auth_error", "weather_tool")
                 return "Erro de autenticação na API meteorológica. Verifique a chave da API."
 
             if response.status_code == 404:
+                track_error("location_not_found", "weather_tool")
                 return f"Localização '{location}' não encontrada. Tente com o nome de uma cidade válida."
 
             if response.status_code != 200:
+                track_error("api_request_error", "weather_tool")
                 return f"Erro ao consultar dados meteorológicos: {response.status_code}"
 
             data = response.json()
@@ -157,9 +196,11 @@ class WeatherTool(BaseTool):
             return weather_info
 
         except requests.RequestException as e:
+            track_error("connection_error", "weather_tool")
             logger.error(f"Erro na requisição meteorológica: {e}")
             return "Erro de conexão ao consultar dados meteorológicos. Tente novamente em alguns minutos."
         except Exception as e:
+            track_error("weather_tool_error", "weather_tool")
             logger.error(f"Erro na WeatherTool: {e}")
             return f"Erro ao consultar informações meteorológicas: {str(e)}"
 

@@ -9,6 +9,7 @@ from drf_spectacular.views import (
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("ht/", include("health_check.urls")),
+    path("", include("django_prometheus.urls")),
     path("api/chatbot/", include("chatbot.urls")),
     path("api/sensors/", include("sensors.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
