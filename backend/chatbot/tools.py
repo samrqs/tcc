@@ -70,15 +70,9 @@ class RAGSearchTool(BaseTool):
                 content = doc.page_content.strip()
                 original_length = len(content)
 
-                if len(content) > 500:
-                    content = content[:500] + "..."
-                    logger.debug(
-                        f"Resultado {i}: conteúdo truncado de {original_length} para 500 caracteres"
-                    )
-                else:
-                    logger.debug(
-                        f"Resultado {i}: conteúdo completo com {original_length} caracteres"
-                    )
+                logger.debug(
+                    f"Resultado {i}: conteúdo completo com {original_length} caracteres"
+                )
 
                 results.append(f"Resultado {i}:\n{content}\n")
 
