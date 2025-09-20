@@ -1,4 +1,19 @@
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-template = "Você é um atendente de IA, contexto:{context}, pergunta:{question}"
-prompt = ChatPromptTemplate.from_template(template)
+from .config import AI_CONTEXTUALIZE_PROMPT, AI_SYSTEM_PROMPT
+
+contextualize_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", AI_CONTEXTUALIZE_PROMPT),
+        MessagesPlaceholder("chat_history"),
+        ("human", "{input}"),
+    ]
+)
+
+qa_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", AI_SYSTEM_PROMPT),
+        MessagesPlaceholder("chat_history"),
+        ("human", "{input}"),
+    ]
+)
