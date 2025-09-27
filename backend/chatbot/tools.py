@@ -423,6 +423,15 @@ class SQLSelectTool(BaseTool):
     - potassio (double precision): Potássio (ppm)
     - salinidade (double precision): Salinidade (ppm)
     - tds (double precision): Total de sólidos dissolvidos (ppm)
+    - user_id (bigint): ID do usuário proprietário dos dados
+    
+    users_user:
+    - id (bigint): ID único do usuário
+    - email (varchar): Email do usuário
+    - name (varchar): Nome do usuário
+    - phone (varchar): Número de telefone/celular
+    - is_active (boolean): Se o usuário está ativo
+    - is_staff (boolean): Se o usuário é administrador
     
     IMPORTANTE: 
     - Apenas queries SELECT são permitidas por motivos de segurança
