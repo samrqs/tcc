@@ -793,20 +793,37 @@ class TestTools:
         tool = SQLSelectTool()
 
         # Queries válidas
-        assert tool._validate_query("SELECT * FROM users") is True
+        assert tool._validate_query("SELECT * FROM sensors_sensordata") is True
         assert tool._validate_query("select count(*) from sensors") is True
         assert (
-            tool._validate_query("SELECT id, name FROM users WHERE active = true")
+            tool._validate_query(
+                "SELECT id, timestamp FROM sensors_sensordata WHERE temperatura > 25"
+            )
             is True
         )
 
         # Queries inválidas
-        assert tool._validate_query("INSERT INTO users VALUES (1, 'test')") is False
-        assert tool._validate_query("UPDATE users SET name = 'test'") is False
-        assert tool._validate_query("DELETE FROM users") is False
-        assert tool._validate_query("DROP TABLE users") is False
-        assert tool._validate_query("SELECT * FROM users; DROP TABLE users;") is False
+        assert (
+            tool._validate_query("INSERT INTO sensors_sensordata VALUES (1, 'test')")
+            is False
+        )
+        assert (
+            tool._validate_query("UPDATE sensors_sensordata SET temperatura = 30")
+            is False
+        )
+        assert tool._validate_query("DELETE FROM sensors_sensordata") is False
+        assert tool._validate_query("DROP TABLE sensors_sensordata") is False
+        assert (
+            tool._validate_query(
+                "SELECT * FROM sensors_sensordata; DROP TABLE sensors_sensordata;"
+            )
+            is False
+        )
         assert tool._validate_query("SELECT * FROM pg_user") is False
+
+        # Queries na tabela users devem ser bloqueadas
+        assert tool._validate_query("SELECT * FROM users_user") is False
+        assert tool._validate_query("SELECT id FROM users") is False
 
     def test_sql_select_tool_add_limit(self):
         """Testa a adição automática de LIMIT"""
@@ -815,17 +832,17 @@ class TestTools:
         tool = SQLSelectTool()
 
         # Query sem LIMIT - deve adicionar
-        query1 = "SELECT * FROM users"
+        query1 = "SELECT * FROM sensors_sensordata"
         result1 = tool._add_limit_to_query(query1)
         assert "LIMIT 50" in result1
 
         # Query com LIMIT - não deve modificar
-        query2 = "SELECT * FROM users LIMIT 10"
+        query2 = "SELECT * FROM sensors_sensordata LIMIT 10"
         result2 = tool._add_limit_to_query(query2)
         assert result2 == query2
 
         # Query COUNT - não deve adicionar LIMIT
-        query3 = "SELECT COUNT(*) FROM users"
+        query3 = "SELECT COUNT(*) FROM sensors_sensordata"
         result3 = tool._add_limit_to_query(query3)
         assert "LIMIT" not in result3
 
@@ -836,13 +853,13 @@ class TestTools:
         tool = SQLSelectTool()
 
         # Teste com resultados
-        results = [(1, "João", "joao@email.com"), (2, "Maria", "maria@email.com")]
-        columns = ["id", "name", "email"]
+        results = [(1, "2025-01-01 10:00:00", 25.5), (2, "2025-01-02 11:00:00", 26.0)]
+        columns = ["id", "timestamp", "temperatura"]
 
         formatted = tool._format_results(results, columns)
-        assert "id | name | email" in formatted
-        assert "João" in formatted
-        assert "Maria" in formatted
+        assert "id | timestamp | temperatura" in formatted
+        assert "2025-01-01 10:00:00" in formatted
+        assert "25.5" in formatted
         assert "📊 Total: 2 resultado(s)" in formatted
 
         # Teste sem resultados
@@ -856,18 +873,22 @@ class TestTools:
 
         # Mock do cursor
         mock_cursor = MagicMock()
-        mock_cursor.fetchall.return_value = [(1, "test")]
-        mock_cursor.description = [("id",), ("name",)]
+        mock_cursor.fetchall.return_value = [(1, 25.5)]
+        mock_cursor.description = [("id",), ("temperatura",)]
 
         mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
 
         tool = SQLSelectTool()
-        results, columns = tool._execute_query_sync("SELECT id, name FROM users", [])
+        results, columns = tool._execute_query_sync(
+            "SELECT id, temperatura FROM sensors_sensordata", []
+        )
 
-        assert results == [(1, "test")]
-        assert columns == ["id", "name"]
+        assert results == [(1, 25.5)]
+        assert columns == ["id", "temperatura"]
         # Quando params está vazio, execute é chamado apenas com a query
-        mock_cursor.execute.assert_called_once_with("SELECT id, name FROM users")
+        mock_cursor.execute.assert_called_once_with(
+            "SELECT id, temperatura FROM sensors_sensordata"
+        )
 
     @patch("chatbot.tools.connection")
     def test_sql_select_tool_run_success(self, mock_connection):
@@ -876,16 +897,16 @@ class TestTools:
 
         # Mock do cursor
         mock_cursor = MagicMock()
-        mock_cursor.fetchall.return_value = [(1, "João")]
-        mock_cursor.description = [("id",), ("name",)]
+        mock_cursor.fetchall.return_value = [(1, 25.5)]
+        mock_cursor.description = [("id",), ("temperatura",)]
 
         mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
 
         tool = SQLSelectTool()
-        result = tool._run("SELECT id, name FROM users_user", [])
+        result = tool._run("SELECT id, temperatura FROM sensors_sensordata", [])
 
-        assert "id | name" in result
-        assert "João" in result
+        assert "id | temperatura" in result
+        assert "25.5" in result
         assert "📊 Total: 1 resultado(s)" in result
 
     def test_sql_select_tool_run_invalid_query(self):
@@ -893,9 +914,25 @@ class TestTools:
         from .tools import SQLSelectTool
 
         tool = SQLSelectTool()
-        result = tool._run("DROP TABLE users", [])
+        result = tool._run("DROP TABLE sensors_sensordata", [])
 
         assert "Apenas queries SELECT são permitidas" in result
+
+    def test_sql_select_tool_block_users_table(self):
+        """Testa se queries na tabela users são bloqueadas"""
+        from .tools import SQLSelectTool
+
+        tool = SQLSelectTool()
+
+        # Testa diferentes formas de tentar acessar a tabela users
+        result1 = tool._run("SELECT * FROM users_user", [])
+        assert "Apenas queries SELECT são permitidas" in result1
+
+        result2 = tool._run("SELECT id FROM users", [])
+        assert "Apenas queries SELECT são permitidas" in result2
+
+        result3 = tool._run("select email from users_user where id = 1", [])
+        assert "Apenas queries SELECT são permitidas" in result3
 
     @patch("chatbot.tools.connection")
     def test_sql_select_tool_run_database_error(self, mock_connection):
@@ -905,7 +942,7 @@ class TestTools:
         mock_connection.cursor.side_effect = Exception("Database connection error")
 
         tool = SQLSelectTool()
-        result = tool._run("SELECT * FROM users_user", [])
+        result = tool._run("SELECT * FROM sensors_sensordata", [])
 
         assert "Erro ao executar query:" in result
 
@@ -917,7 +954,7 @@ class TestTools:
         tool = SQLSelectTool()
 
         # Teste com query inválida (não precisa de mock de BD)
-        result = await tool._arun("INSERT INTO users VALUES (1)", [])
+        result = await tool._arun("INSERT INTO sensors_sensordata VALUES (1)", [])
         assert "Apenas queries SELECT são permitidas" in result
 
     @pytest.mark.asyncio
