@@ -130,47 +130,60 @@ class TestChatbotWebhookView:
 
 
 class TestChains:
-    def test_get_rag_chain(self, mock_external_services):
-        """Testa a criação da RAG chain"""
-        from .chains import get_rag_chain
+    def test_get_agent_executor(self, mock_external_services):
+        """Testa a criação do agent executor"""
+        from .chains import get_agent_executor
         from .config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_MODEL_TEMPERATURE
 
-        with patch("chatbot.chains.get_vectorstore") as mock_get_vectorstore:
-            mock_vectorstore = MagicMock()
-            mock_retriever = MagicMock()
-            mock_vectorstore.as_retriever.return_value = mock_retriever
-            mock_get_vectorstore.return_value = mock_vectorstore
+        # Teste mais simples que verifica apenas se a função não falha
+        with patch("chatbot.chains.get_tools") as mock_get_tools, patch(
+            "chatbot.chains.get_agent_prompt"
+        ) as mock_get_agent_prompt, patch(
+            "chatbot.chains.create_tool_calling_agent"
+        ) as mock_create_agent, patch(
+            "chatbot.chains.AgentExecutor"
+        ) as mock_agent_executor:
 
-            chain = get_rag_chain()
+            mock_tools = []
+            mock_get_tools.return_value = mock_tools
+            mock_get_agent_prompt.return_value = MagicMock()
+            mock_create_agent.return_value = MagicMock()
+            mock_agent_executor.return_value = MagicMock()
+
+            agent_executor = get_agent_executor()
 
             mock_external_services["openai"].assert_called_with(
                 model=OPENAI_MODEL_NAME,
                 temperature=OPENAI_MODEL_TEMPERATURE,
                 api_key=OPENAI_API_KEY,
             )
-            mock_get_vectorstore.assert_called_once()
-            mock_vectorstore.as_retriever.assert_called_once()
-            assert chain is not None
+            mock_get_tools.assert_called_once()
+            mock_get_agent_prompt.assert_called_once()
+            mock_create_agent.assert_called_once()
+            mock_agent_executor.assert_called_once()
+            assert agent_executor is not None
 
-    def test_get_conversational_rag_chain(self, mock_external_services):
-        """Testa a criação da conversational RAG chain"""
-        from .chains import get_conversational_rag_chain
+    def test_get_conversational_agent(self, mock_external_services):
+        """Testa a criação do conversational agent"""
+        from .chains import get_conversational_agent
 
-        with patch("chatbot.chains.get_rag_chain") as mock_get_rag_chain, patch(
+        with patch(
+            "chatbot.chains.get_agent_executor"
+        ) as mock_get_agent_executor, patch(
             "chatbot.chains.RunnableWithMessageHistory"
         ) as mock_runnable:
 
-            mock_rag_chain = MagicMock()
-            mock_get_rag_chain.return_value = mock_rag_chain
+            mock_agent_executor = MagicMock()
+            mock_get_agent_executor.return_value = mock_agent_executor
 
-            mock_conversational_chain = MagicMock()
-            mock_runnable.return_value = mock_conversational_chain
+            mock_conversational_agent = MagicMock()
+            mock_runnable.return_value = mock_conversational_agent
 
-            chain = get_conversational_rag_chain()
+            conversational_agent = get_conversational_agent()
 
-            mock_get_rag_chain.assert_called_once()
+            mock_get_agent_executor.assert_called_once()
             mock_runnable.assert_called_once()
-            assert chain == mock_conversational_chain
+            assert conversational_agent == mock_conversational_agent
 
 
 class TestVectorstore:
@@ -352,9 +365,7 @@ class TestMessageBuffer:
         """Testa o tratamento do debounce"""
         from .message_buffer import handle_debounce
 
-        with patch(
-            "chatbot.message_buffer.conversational_rag_chain"
-        ) as mock_rag_chain, patch(
+        with patch("chatbot.message_buffer.conversational_agent") as mock_agent, patch(
             "chatbot.message_buffer.send_whatsapp_message"
         ) as mock_send_whatsapp, patch(
             "chatbot.message_buffer.asyncio.sleep"
@@ -362,7 +373,9 @@ class TestMessageBuffer:
             "chatbot.message_buffer.BUFFER_KEY_SUFIX", "_buffer"
         ), patch(
             "chatbot.message_buffer.DEBOUNCE_SECONDS", "2"
-        ):
+        ), patch(
+            "chatbot.message_buffer.check_user_permission"
+        ) as mock_check_permission:
 
             mock_sleep.return_value = None
             mock_external_services["redis_client"].lrange.return_value = [
@@ -371,7 +384,8 @@ class TestMessageBuffer:
                 "você",
                 "está?",
             ]
-            mock_rag_chain.invoke.return_value = {"answer": "Estou bem, obrigado!"}
+            mock_agent.invoke.return_value = {"output": "Estou bem, obrigado!"}
+            mock_check_permission.return_value = (True, "")
 
             await handle_debounce(self.chat_id)
 
@@ -379,7 +393,8 @@ class TestMessageBuffer:
             mock_external_services["redis_client"].lrange.assert_called_once_with(
                 buffer_key, 0, -1
             )
-            mock_rag_chain.invoke.assert_called_once_with(
+            mock_check_permission.assert_called_once()
+            mock_agent.invoke.assert_called_once_with(
                 input={"input": "Olá como você está?"},
                 config={"configurable": {"session_id": self.chat_id}},
             )
@@ -533,3 +548,417 @@ class TestPrompts:
                 message.prompt, "input_variables"
             ):
                 qa_input_vars.update(message.prompt.input_variables)
+
+
+class TestTools:
+    """Testes para as ferramentas do chatbot"""
+
+    def test_get_tools(self):
+        """Testa se todas as ferramentas são retornadas"""
+        from .tools import get_tools
+
+        tools = get_tools()
+        assert len(tools) == 4
+
+        tool_names = [tool.name for tool in tools]
+        expected_tools = ["rag_search", "weather_search", "web_scraping", "sql_select"]
+
+        for expected_tool in expected_tools:
+            assert expected_tool in tool_names
+
+    def test_rag_search_input_validation(self):
+        """Testa a validação de entrada da RAGSearchTool"""
+        from .tools import RAGSearchInput
+
+        # Teste com dados válidos
+        valid_input = RAGSearchInput(query="test query", k=5)
+        assert valid_input.query == "test query"
+        assert valid_input.k == 5
+
+        # Teste com valores padrão
+        default_input = RAGSearchInput(query="test query")
+        assert default_input.k == 3
+
+    @patch("chatbot.tools.get_vectorstore")
+    def test_rag_search_tool_success(self, mock_get_vectorstore):
+        """Testa o funcionamento da RAGSearchTool com sucesso"""
+        from .tools import RAGSearchTool
+
+        # Mock do vectorstore
+        mock_doc = MagicMock()
+        mock_doc.page_content = "Este é um documento de teste sobre agricultura"
+
+        mock_retriever = MagicMock()
+        mock_retriever.get_relevant_documents.return_value = [mock_doc]
+
+        mock_vectorstore = MagicMock()
+        mock_vectorstore.as_retriever.return_value = mock_retriever
+        mock_get_vectorstore.return_value = mock_vectorstore
+
+        tool = RAGSearchTool()
+        result = tool._run("como plantar milho", k=3)
+
+        assert "Resultado 1:" in result
+        assert "Este é um documento de teste sobre agricultura" in result
+        mock_get_vectorstore.assert_called_once()
+        mock_retriever.get_relevant_documents.assert_called_once_with(
+            "como plantar milho"
+        )
+
+    @patch("chatbot.tools.get_vectorstore")
+    def test_rag_search_tool_no_results(self, mock_get_vectorstore):
+        """Testa a RAGSearchTool quando não há resultados"""
+        from .tools import RAGSearchTool
+
+        mock_retriever = MagicMock()
+        mock_retriever.get_relevant_documents.return_value = []
+
+        mock_vectorstore = MagicMock()
+        mock_vectorstore.as_retriever.return_value = mock_retriever
+        mock_get_vectorstore.return_value = mock_vectorstore
+
+        tool = RAGSearchTool()
+        result = tool._run("query inexistente")
+
+        assert "Não foram encontradas informações relevantes nos documentos." in result
+
+    @patch("chatbot.tools.get_vectorstore")
+    def test_rag_search_tool_error(self, mock_get_vectorstore):
+        """Testa o tratamento de erro da RAGSearchTool"""
+        from .tools import RAGSearchTool
+
+        mock_get_vectorstore.side_effect = Exception("Erro no vectorstore")
+
+        tool = RAGSearchTool()
+        result = tool._run("test query")
+
+        assert "Erro ao buscar nos documentos:" in result
+
+    def test_weather_input_validation(self):
+        """Testa a validação de entrada da WeatherTool"""
+        from .tools import WeatherInput
+
+        # Teste com localização customizada
+        weather_input = WeatherInput(location="São Paulo,SP,BR")
+        assert weather_input.location == "São Paulo,SP,BR"
+
+        # Teste com valor padrão
+        default_input = WeatherInput()
+        assert default_input.location == "Parelheiros,SP,BR"
+
+    @patch("chatbot.tools.requests.get")
+    @patch("chatbot.tools.OPENWEATHER_API_KEY", "test_key")
+    def test_weather_tool_success(self, mock_get):
+        """Testa o funcionamento da WeatherTool com sucesso"""
+        from .tools import WeatherTool
+
+        # Mock da resposta da API
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "name": "Parelheiros",
+            "sys": {"country": "BR"},
+            "main": {
+                "temp": 25.5,
+                "feels_like": 27.0,
+                "humidity": 65,
+                "pressure": 1013,
+            },
+            "weather": [{"description": "céu limpo"}],
+            "wind": {"speed": 3.2},
+        }
+        mock_get.return_value = mock_response
+
+        tool = WeatherTool()
+        result = tool._run("Parelheiros,SP,BR")
+
+        assert "🌤️ Clima em Parelheiros, BR" in result
+        assert "25.5°C" in result
+        assert "27.0°C" in result
+        assert "65%" in result
+        assert "céu limpo" in result.lower()
+
+    @patch("chatbot.tools.requests.get")
+    @patch("chatbot.tools.OPENWEATHER_API_KEY", None)
+    def test_weather_tool_no_api_key(self, mock_get):
+        """Testa a WeatherTool sem chave da API"""
+        from .tools import WeatherTool
+
+        tool = WeatherTool()
+        result = tool._run()
+
+        assert "API key do OpenWeatherMap não configurada" in result
+
+    @patch("chatbot.tools.requests.get")
+    @patch("chatbot.tools.OPENWEATHER_API_KEY", "test_key")
+    def test_weather_tool_location_not_found(self, mock_get):
+        """Testa a WeatherTool com localização não encontrada"""
+        from .tools import WeatherTool
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_get.return_value = mock_response
+
+        tool = WeatherTool()
+        result = tool._run("LocalizacaoInexistente")
+
+        assert "Localização 'LocalizacaoInexistente' não encontrada" in result
+
+    def test_web_scraping_input_validation(self):
+        """Testa a validação de entrada da WebScrapingTool"""
+        from .tools import WebScrapingInput
+
+        # Teste com todos os parâmetros
+        scraping_input = WebScrapingInput(
+            url="https://example.com", selector="h1", extract_links=True
+        )
+        assert scraping_input.url == "https://example.com"
+        assert scraping_input.selector == "h1"
+        assert scraping_input.extract_links is True
+
+        # Teste com valores padrão
+        default_input = WebScrapingInput(url="https://example.com")
+        assert default_input.selector == ""
+        assert default_input.extract_links is False
+
+    @patch("chatbot.tools.requests.get")
+    def test_web_scraping_tool_success(self, mock_get):
+        """Testa o funcionamento da WebScrapingTool com sucesso"""
+        from .tools import WebScrapingTool
+
+        # Mock HTML de resposta
+        html_content = """
+        <html>
+            <head><title>Teste de Agricultura</title></head>
+            <body>
+                <h1>Título Principal</h1>
+                <p>Este é um parágrafo sobre agricultura sustentável.</p>
+                <a href="https://example.com/link1">Link de exemplo</a>
+            </body>
+        </html>
+        """
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = html_content.encode("utf-8")
+        mock_get.return_value = mock_response
+
+        tool = WebScrapingTool()
+        result = tool._run("https://example.com")
+
+        assert "Teste de Agricultura" in result
+        assert "🌐 **Fonte:** https://example.com" in result
+
+    @patch("chatbot.tools.requests.get")
+    def test_web_scraping_tool_invalid_url(self, mock_get):
+        """Testa a WebScrapingTool com URL inválida"""
+        from .tools import WebScrapingTool
+
+        tool = WebScrapingTool()
+        result = tool._run("url-invalida")
+
+        assert "URL inválida" in result
+
+    @patch("chatbot.tools.requests.get")
+    def test_web_scraping_tool_http_error(self, mock_get):
+        """Testa a WebScrapingTool com erro HTTP"""
+        from .tools import WebScrapingTool
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_get.return_value = mock_response
+
+        tool = WebScrapingTool()
+        result = tool._run("https://example.com")
+
+        assert "Erro HTTP 500" in result
+
+    def test_sql_select_input_validation(self):
+        """Testa a validação de entrada da SQLSelectTool"""
+        from .tools import SQLSelectInput
+
+        # Teste com parâmetros
+        sql_input = SQLSelectInput(query="SELECT * FROM test WHERE id = %s", params=[1])
+        assert sql_input.query == "SELECT * FROM test WHERE id = %s"
+        assert sql_input.params == [1]
+
+        # Teste com valores padrão
+        default_input = SQLSelectInput(query="SELECT * FROM test")
+        assert default_input.params == []
+
+    def test_sql_select_tool_validate_query(self):
+        """Testa a validação de queries da SQLSelectTool"""
+        from .tools import SQLSelectTool
+
+        tool = SQLSelectTool()
+
+        # Queries válidas
+        assert tool._validate_query("SELECT * FROM users") is True
+        assert tool._validate_query("select count(*) from sensors") is True
+        assert (
+            tool._validate_query("SELECT id, name FROM users WHERE active = true")
+            is True
+        )
+
+        # Queries inválidas
+        assert tool._validate_query("INSERT INTO users VALUES (1, 'test')") is False
+        assert tool._validate_query("UPDATE users SET name = 'test'") is False
+        assert tool._validate_query("DELETE FROM users") is False
+        assert tool._validate_query("DROP TABLE users") is False
+        assert tool._validate_query("SELECT * FROM users; DROP TABLE users;") is False
+        assert tool._validate_query("SELECT * FROM pg_user") is False
+
+    def test_sql_select_tool_add_limit(self):
+        """Testa a adição automática de LIMIT"""
+        from .tools import SQLSelectTool
+
+        tool = SQLSelectTool()
+
+        # Query sem LIMIT - deve adicionar
+        query1 = "SELECT * FROM users"
+        result1 = tool._add_limit_to_query(query1)
+        assert "LIMIT 50" in result1
+
+        # Query com LIMIT - não deve modificar
+        query2 = "SELECT * FROM users LIMIT 10"
+        result2 = tool._add_limit_to_query(query2)
+        assert result2 == query2
+
+        # Query COUNT - não deve adicionar LIMIT
+        query3 = "SELECT COUNT(*) FROM users"
+        result3 = tool._add_limit_to_query(query3)
+        assert "LIMIT" not in result3
+
+    def test_sql_select_tool_format_results(self):
+        """Testa a formatação de resultados da SQLSelectTool"""
+        from .tools import SQLSelectTool
+
+        tool = SQLSelectTool()
+
+        # Teste com resultados
+        results = [(1, "João", "joao@email.com"), (2, "Maria", "maria@email.com")]
+        columns = ["id", "name", "email"]
+
+        formatted = tool._format_results(results, columns)
+        assert "id | name | email" in formatted
+        assert "João" in formatted
+        assert "Maria" in formatted
+        assert "📊 Total: 2 resultado(s)" in formatted
+
+        # Teste sem resultados
+        empty_formatted = tool._format_results([], columns)
+        assert "Nenhum resultado encontrado." in empty_formatted
+
+    @patch("chatbot.tools.connection")
+    def test_sql_select_tool_execute_query_sync(self, mock_connection):
+        """Testa a execução síncrona de query"""
+        from .tools import SQLSelectTool
+
+        # Mock do cursor
+        mock_cursor = MagicMock()
+        mock_cursor.fetchall.return_value = [(1, "test")]
+        mock_cursor.description = [("id",), ("name",)]
+
+        mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
+
+        tool = SQLSelectTool()
+        results, columns = tool._execute_query_sync("SELECT id, name FROM users", [])
+
+        assert results == [(1, "test")]
+        assert columns == ["id", "name"]
+        # Quando params está vazio, execute é chamado apenas com a query
+        mock_cursor.execute.assert_called_once_with("SELECT id, name FROM users")
+
+    @patch("chatbot.tools.connection")
+    def test_sql_select_tool_run_success(self, mock_connection):
+        """Testa a execução bem-sucedida da SQLSelectTool"""
+        from .tools import SQLSelectTool
+
+        # Mock do cursor
+        mock_cursor = MagicMock()
+        mock_cursor.fetchall.return_value = [(1, "João")]
+        mock_cursor.description = [("id",), ("name",)]
+
+        mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
+
+        tool = SQLSelectTool()
+        result = tool._run("SELECT id, name FROM users_user", [])
+
+        assert "id | name" in result
+        assert "João" in result
+        assert "📊 Total: 1 resultado(s)" in result
+
+    def test_sql_select_tool_run_invalid_query(self):
+        """Testa a SQLSelectTool com query inválida"""
+        from .tools import SQLSelectTool
+
+        tool = SQLSelectTool()
+        result = tool._run("DROP TABLE users", [])
+
+        assert "Apenas queries SELECT são permitidas" in result
+
+    @patch("chatbot.tools.connection")
+    def test_sql_select_tool_run_database_error(self, mock_connection):
+        """Testa a SQLSelectTool com erro de banco de dados"""
+        from .tools import SQLSelectTool
+
+        mock_connection.cursor.side_effect = Exception("Database connection error")
+
+        tool = SQLSelectTool()
+        result = tool._run("SELECT * FROM users_user", [])
+
+        assert "Erro ao executar query:" in result
+
+    @pytest.mark.asyncio
+    async def test_sql_select_tool_arun(self):
+        """Testa a execução assíncrona da SQLSelectTool"""
+        from .tools import SQLSelectTool
+
+        tool = SQLSelectTool()
+
+        # Teste com query inválida (não precisa de mock de BD)
+        result = await tool._arun("INSERT INTO users VALUES (1)", [])
+        assert "Apenas queries SELECT são permitidas" in result
+
+    @pytest.mark.asyncio
+    async def test_rag_search_tool_arun(self):
+        """Testa a execução assíncrona da RAGSearchTool"""
+        from .tools import RAGSearchTool
+
+        with patch("chatbot.tools.get_vectorstore") as mock_get_vectorstore:
+            mock_doc = MagicMock()
+            mock_doc.page_content = "Documento de teste"
+
+            mock_retriever = MagicMock()
+            mock_retriever.get_relevant_documents.return_value = [mock_doc]
+
+            mock_vectorstore = MagicMock()
+            mock_vectorstore.as_retriever.return_value = mock_retriever
+            mock_get_vectorstore.return_value = mock_vectorstore
+
+            tool = RAGSearchTool()
+            result = await tool._arun("test query")
+
+            assert "Resultado 1:" in result
+            assert "Documento de teste" in result
+
+    @pytest.mark.asyncio
+    async def test_weather_tool_arun(self):
+        """Testa a execução assíncrona da WeatherTool"""
+        from .tools import WeatherTool
+
+        with patch("chatbot.tools.OPENWEATHER_API_KEY", None):
+            tool = WeatherTool()
+            result = await tool._arun()
+
+            assert "API key do OpenWeatherMap não configurada" in result
+
+    @pytest.mark.asyncio
+    async def test_web_scraping_tool_arun(self):
+        """Testa a execução assíncrona da WebScrapingTool"""
+        from .tools import WebScrapingTool
+
+        tool = WebScrapingTool()
+        result = await tool._arun("url-invalida")
+
+        assert "URL inválida" in result

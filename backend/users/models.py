@@ -29,9 +29,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(max_length=150, blank=True)
     phone = models.CharField(
         max_length=20,
+        unique=True,
         blank=True,
         null=True,
-        help_text="Número de telefone/celular do usuário",
+        help_text="Número de telefone/celular do usuário (único se preenchido)",
     )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
