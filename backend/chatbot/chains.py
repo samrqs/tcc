@@ -4,7 +4,7 @@ from langchain_openai import ChatOpenAI
 
 from .config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_MODEL_TEMPERATURE
 from .memory import get_session_history
-from .prompts import agent_prompt
+from .prompts import get_agent_prompt
 from .tools import get_tools
 
 
@@ -17,10 +17,10 @@ def get_agent_executor():
 
     tools = get_tools()
 
+    # Gera o prompt com a data atual
+    agent_prompt = get_agent_prompt()
     agent = create_tool_calling_agent(llm, tools, agent_prompt)
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-
-    return agent_executor
+    return AgentExecutor(agent=agent, tools=tools, verbose=True)
 
 
 def get_conversational_agent():

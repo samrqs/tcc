@@ -1,9 +1,12 @@
+import asyncio
 import logging
 from typing import List, Type
 from urllib.parse import urljoin, urlparse
 
 import requests
+from asgiref.sync import sync_to_async
 from bs4 import BeautifulSoup
+from django.db import connection
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
@@ -385,6 +388,284 @@ class WebScrapingTool(BaseTool):
         return self._run(url, selector, extract_links)
 
 
+class SQLSelectInput(BaseModel):
+    """Input para a ferramenta SQL SELECT."""
+
+    query: str = Field(
+        description="Query SQL SELECT para executar (use %s para parâmetros)"
+    )
+    params: List = Field(
+        default=[],
+        description="Lista de parâmetros para a query (substitui %s na ordem)",
+    )
+
+
+class SQLSelectTool(BaseTool):
+    """Ferramenta para executar queries SELECT no banco de dados PostgreSQL."""
+
+    name: str = "sql_select"
+    description: str = """
+    Realiza uma query no Postgres para buscar informações sobre as tabelas do banco de dados.
+    
+    Só pode realizar operações de busca (SELECT), não é permitido a geração de qualquer operação de escrita.
+    
+    Tabelas disponíveis:
+    
+    sensors_sensordata:
+    - id (bigint): ID único do registro
+    - timestamp (timestamp with time zone): Data/hora da leitura
+    - umidade (double precision): Umidade do solo (%)
+    - condutividade (double precision): Condutividade elétrica (µS/cm)
+    - temperatura (double precision): Temperatura (°C)
+    - ph (double precision): pH do solo
+    - nitrogenio (double precision): Nitrogênio (ppm)
+    - fosforo (double precision): Fósforo (ppm)
+    - potassio (double precision): Potássio (ppm)
+    - salinidade (double precision): Salinidade (ppm)
+    - tds (double precision): Total de sólidos dissolvidos (ppm)
+    
+    IMPORTANTE: 
+    - Apenas queries SELECT são permitidas por motivos de segurança
+    - Todas operações retornam um máximo de 50 itens
+    - Use %s para parâmetros e forneça a lista de valores no campo params
+    
+    Exemplos de uso:
+    - query: "SELECT timestamp, temperatura, umidade FROM sensors_sensordata WHERE timestamp > %s", params: ["2025-01-01"]
+    - query: "SELECT COUNT(*) FROM sensors_sensordata WHERE ph BETWEEN %s AND %s", params: [6.0, 8.0]
+    """
+    args_schema: Type[BaseModel] = SQLSelectInput
+
+    def _validate_query(self, query: str) -> bool:
+        """Valida se a query é segura e é apenas um SELECT."""
+        # Remove espaços e converte para minúsculo
+        clean_query = query.strip().lower()
+
+        # Verifica se começa com SELECT
+        if not clean_query.startswith("select"):
+            return False
+
+        # Lista de palavras proibidas que podem ser perigosas
+        forbidden_keywords = [
+            "insert",
+            "update",
+            "delete",
+            "drop",
+            "create",
+            "alter",
+            "truncate",
+            "exec",
+            "execute",
+            "sp_",
+            "xp_",
+            "--",
+            ";--",
+            "into outfile",
+            "load_file",
+            "information_schema",
+            "pg_",
+            "current_setting",
+            "set ",
+            "show ",
+            "copy ",
+            "\\",
+            "pg_read_file",
+            "pg_ls_dir",
+        ]
+
+        # Verifica se contém palavras proibidas usando any() para melhor performance
+        if any(keyword in clean_query for keyword in forbidden_keywords):
+            return False
+
+        # Validação adicional: não permitir múltiplas queries (SQL injection)
+        if clean_query.count(";") > 1:
+            return False
+
+        # Não permitir UNION sem ser em subquery controlada
+        if "union" in clean_query and not ("(" in clean_query and ")" in clean_query):
+            return False
+
+        return True
+
+    def _format_results(self, results: List[tuple], columns: List[str]) -> str:
+        """Formata os resultados da query em uma string legível."""
+        if not results:
+            return "Nenhum resultado encontrado."
+
+        # Para exibição, limita a 20 resultados para não sobrecarregar a resposta
+        max_display = 20
+        limited_results = results[:max_display]
+
+        # Cabeçalho
+        header = " | ".join(columns)
+        separator = "-" * len(header)
+        formatted_lines = [header, separator]
+
+        # Resultados
+        for row in limited_results:
+            row_str = " | ".join(
+                str(value) if value is not None else "NULL" for value in row
+            )
+            formatted_lines.append(row_str)
+
+        # Informações sobre os resultados
+        total_count = len(results)
+        if total_count > max_display:
+            formatted_lines.append(
+                f"\n📊 Mostrando {max_display} de {total_count} resultado(s)"
+            )
+        else:
+            formatted_lines.append(f"\n📊 Total: {total_count} resultado(s)")
+
+        return "\n".join(formatted_lines)
+
+    def _add_limit_to_query(self, query: str) -> str:
+        """Adiciona LIMIT 50 à query se não tiver LIMIT especificado."""
+        clean_query = query.strip().lower()
+
+        # Se já tem LIMIT, não adiciona outro
+        if "limit" in clean_query:
+            return query
+
+        # Se é uma query de COUNT, não adiciona LIMIT
+        if clean_query.startswith("select count("):
+            return query
+
+        # Adiciona LIMIT 50
+        return f"{query.rstrip(';')} LIMIT 50"
+
+    def _execute_query_sync(self, final_query: str, params: List) -> tuple:
+        """Executa a query de forma síncrona e retorna os resultados e colunas."""
+        logger.debug("SQL Select Tool - Executando query no banco de dados...")
+        with connection.cursor() as cursor:
+            if params:
+                logger.debug(f"SQL Select Tool - Executando com parâmetros: {params}")
+                cursor.execute(final_query, params)
+            else:
+                logger.debug("SQL Select Tool - Executando sem parâmetros")
+                cursor.execute(final_query)
+
+            results = cursor.fetchall()
+            logger.info(
+                f"SQL Select Tool - Query executada com sucesso, {len(results)} registros retornados"
+            )
+
+            # Obtém os nomes das colunas
+            columns = (
+                [desc[0] for desc in cursor.description] if cursor.description else []
+            )
+            logger.debug(f"SQL Select Tool - Colunas retornadas: {columns}")
+
+            return results, columns
+
+    def _run(self, query: str, params: List = None) -> str:
+        """Executa a query SQL e retorna os resultados."""
+        if params is None:
+            params = []
+
+        # Log da query e parâmetros recebidos
+        logger.info(f"SQL Select Tool - Query recebida: {query}")
+        logger.info(f"SQL Select Tool - Parâmetros: {params}")
+
+        try:
+            # Valida a query
+            if not self._validate_query(query):
+                logger.warning(
+                    f"SQL Select Tool - Query rejeitada por segurança: {query}"
+                )
+                return "Erro: Apenas queries SELECT são permitidas. Query rejeitada por motivos de segurança."
+
+            # Adiciona LIMIT 50 se necessário
+            final_query = self._add_limit_to_query(query)
+
+            # Log da query final se foi modificada
+            if final_query != query:
+                logger.info(f"SQL Select Tool - Query modificada para: {final_query}")
+
+            # Sempre tenta execução direta primeiro, se falhar usa thread
+            try:
+                logger.debug("SQL Select Tool - Tentando execução direta")
+                results, columns = self._execute_query_sync(final_query, params)
+            except Exception as sync_error:
+                if "async context" in str(sync_error):
+                    logger.debug(
+                        "SQL Select Tool - Contexto assíncrono detectado, executando em thread"
+                    )
+                    # Força execução em thread separada quando em contexto assíncrono
+                    import concurrent.futures
+
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(
+                            self._execute_query_sync, final_query, params
+                        )
+                        results, columns = future.result()
+                else:
+                    # Re-lança outros erros
+                    raise sync_error
+
+            # Adiciona informação sobre o limite aplicado
+            result_text = self._format_results(results, columns)
+            if "LIMIT 50" in final_query and final_query != query:
+                result_text += "\n\n📝 Nota: LIMIT 50 foi aplicado automaticamente para otimizar a performance."
+
+            logger.info(
+                f"SQL Select Tool - Resultado formatado com sucesso ({len(result_text)} caracteres)"
+            )
+            return result_text
+
+        except Exception as e:
+            logger.error(f"SQL Select Tool - Erro ao executar query: {query}")
+            logger.error(f"SQL Select Tool - Parâmetros usados: {params}")
+            logger.error(f"SQL Select Tool - Erro detalhado: {str(e)}", exc_info=True)
+            track_error("sql_query_error", "sql_select_tool")
+            return f"Erro ao executar query: {str(e)}"
+
+    async def _arun(self, query: str, params: List = None) -> str:
+        """Versão assíncrona da execução."""
+        if params is None:
+            params = []
+
+        # Log da query e parâmetros recebidos
+        logger.info(f"SQL Select Tool - Query recebida: {query}")
+        logger.info(f"SQL Select Tool - Parâmetros: {params}")
+
+        try:
+            # Valida a query
+            if not self._validate_query(query):
+                logger.warning(
+                    f"SQL Select Tool - Query rejeitada por segurança: {query}"
+                )
+                return "Erro: Apenas queries SELECT são permitidas. Query rejeitada por motivos de segurança."
+
+            # Adiciona LIMIT 50 se necessário
+            final_query = self._add_limit_to_query(query)
+
+            # Log da query final se foi modificada
+            if final_query != query:
+                logger.info(f"SQL Select Tool - Query modificada para: {final_query}")
+
+            # Executa a query de forma assíncrona
+            results, columns = await sync_to_async(
+                self._execute_query_sync, thread_sensitive=True
+            )(final_query, params)
+
+            # Adiciona informação sobre o limite aplicado
+            result_text = self._format_results(results, columns)
+            if "LIMIT 50" in final_query and final_query != query:
+                result_text += "\n\n📝 Nota: LIMIT 50 foi aplicado automaticamente para otimizar a performance."
+
+            logger.info(
+                f"SQL Select Tool - Resultado formatado com sucesso ({len(result_text)} caracteres)"
+            )
+            return result_text
+
+        except Exception as e:
+            logger.error(f"SQL Select Tool - Erro ao executar query: {query}")
+            logger.error(f"SQL Select Tool - Parâmetros usados: {params}")
+            logger.error(f"SQL Select Tool - Erro detalhado: {str(e)}", exc_info=True)
+            track_error("sql_query_error", "sql_select_tool")
+            return f"Erro ao executar query: {str(e)}"
+
+
 def get_tools() -> List[BaseTool]:
     """Retorna a lista de ferramentas disponíveis."""
-    return [RAGSearchTool(), WeatherTool(), WebScrapingTool()]
+    return [RAGSearchTool(), WeatherTool(), WebScrapingTool(), SQLSelectTool()]
