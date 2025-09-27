@@ -130,47 +130,60 @@ class TestChatbotWebhookView:
 
 
 class TestChains:
-    def test_get_rag_chain(self, mock_external_services):
-        """Testa a criação da RAG chain"""
-        from .chains import get_rag_chain
+    def test_get_agent_executor(self, mock_external_services):
+        """Testa a criação do agent executor"""
+        from .chains import get_agent_executor
         from .config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_MODEL_TEMPERATURE
 
-        with patch("chatbot.chains.get_vectorstore") as mock_get_vectorstore:
-            mock_vectorstore = MagicMock()
-            mock_retriever = MagicMock()
-            mock_vectorstore.as_retriever.return_value = mock_retriever
-            mock_get_vectorstore.return_value = mock_vectorstore
+        # Teste mais simples que verifica apenas se a função não falha
+        with patch("chatbot.chains.get_tools") as mock_get_tools, patch(
+            "chatbot.chains.get_agent_prompt"
+        ) as mock_get_agent_prompt, patch(
+            "chatbot.chains.create_tool_calling_agent"
+        ) as mock_create_agent, patch(
+            "chatbot.chains.AgentExecutor"
+        ) as mock_agent_executor:
 
-            chain = get_rag_chain()
+            mock_tools = []
+            mock_get_tools.return_value = mock_tools
+            mock_get_agent_prompt.return_value = MagicMock()
+            mock_create_agent.return_value = MagicMock()
+            mock_agent_executor.return_value = MagicMock()
+
+            agent_executor = get_agent_executor()
 
             mock_external_services["openai"].assert_called_with(
                 model=OPENAI_MODEL_NAME,
                 temperature=OPENAI_MODEL_TEMPERATURE,
                 api_key=OPENAI_API_KEY,
             )
-            mock_get_vectorstore.assert_called_once()
-            mock_vectorstore.as_retriever.assert_called_once()
-            assert chain is not None
+            mock_get_tools.assert_called_once()
+            mock_get_agent_prompt.assert_called_once()
+            mock_create_agent.assert_called_once()
+            mock_agent_executor.assert_called_once()
+            assert agent_executor is not None
 
-    def test_get_conversational_rag_chain(self, mock_external_services):
-        """Testa a criação da conversational RAG chain"""
-        from .chains import get_conversational_rag_chain
+    def test_get_conversational_agent(self, mock_external_services):
+        """Testa a criação do conversational agent"""
+        from .chains import get_conversational_agent
 
-        with patch("chatbot.chains.get_rag_chain") as mock_get_rag_chain, patch(
+        with patch(
+            "chatbot.chains.get_agent_executor"
+        ) as mock_get_agent_executor, patch(
             "chatbot.chains.RunnableWithMessageHistory"
         ) as mock_runnable:
 
-            mock_rag_chain = MagicMock()
-            mock_get_rag_chain.return_value = mock_rag_chain
+            mock_agent_executor = MagicMock()
+            mock_get_agent_executor.return_value = mock_agent_executor
 
-            mock_conversational_chain = MagicMock()
-            mock_runnable.return_value = mock_conversational_chain
+            mock_conversational_agent = MagicMock()
+            mock_runnable.return_value = mock_conversational_agent
 
-            chain = get_conversational_rag_chain()
+            conversational_agent = get_conversational_agent()
 
-            mock_get_rag_chain.assert_called_once()
+            mock_get_agent_executor.assert_called_once()
             mock_runnable.assert_called_once()
-            assert chain == mock_conversational_chain
+            assert conversational_agent == mock_conversational_agent
 
 
 class TestVectorstore:
@@ -352,9 +365,7 @@ class TestMessageBuffer:
         """Testa o tratamento do debounce"""
         from .message_buffer import handle_debounce
 
-        with patch(
-            "chatbot.message_buffer.conversational_rag_chain"
-        ) as mock_rag_chain, patch(
+        with patch("chatbot.message_buffer.conversational_agent") as mock_agent, patch(
             "chatbot.message_buffer.send_whatsapp_message"
         ) as mock_send_whatsapp, patch(
             "chatbot.message_buffer.asyncio.sleep"
@@ -362,7 +373,9 @@ class TestMessageBuffer:
             "chatbot.message_buffer.BUFFER_KEY_SUFIX", "_buffer"
         ), patch(
             "chatbot.message_buffer.DEBOUNCE_SECONDS", "2"
-        ):
+        ), patch(
+            "chatbot.message_buffer.check_user_permission"
+        ) as mock_check_permission:
 
             mock_sleep.return_value = None
             mock_external_services["redis_client"].lrange.return_value = [
@@ -371,7 +384,8 @@ class TestMessageBuffer:
                 "você",
                 "está?",
             ]
-            mock_rag_chain.invoke.return_value = {"answer": "Estou bem, obrigado!"}
+            mock_agent.invoke.return_value = {"output": "Estou bem, obrigado!"}
+            mock_check_permission.return_value = (True, "")
 
             await handle_debounce(self.chat_id)
 
@@ -379,7 +393,8 @@ class TestMessageBuffer:
             mock_external_services["redis_client"].lrange.assert_called_once_with(
                 buffer_key, 0, -1
             )
-            mock_rag_chain.invoke.assert_called_once_with(
+            mock_check_permission.assert_called_once()
+            mock_agent.invoke.assert_called_once_with(
                 input={"input": "Olá como você está?"},
                 config={"configurable": {"session_id": self.chat_id}},
             )
