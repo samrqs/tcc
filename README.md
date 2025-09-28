@@ -1,18 +1,19 @@
-# 🤖 TCC - Chatbot com IA e WhatsApp
+# 🌾 TCC - Assistente Técnico Agrícola com IA
 
-Sistema de chatbot inteligente que integra **WhatsApp**, **Retrieval-Augmented Generation (RAG)** e **OpenAI** para fornecer respostas contextualizadas baseadas em documentos personalizados.
+Sistema inteligente de assistência técnica agrícola que integra **WhatsApp**, **sensores IoT**, **Retrieval-Augmented Generation (RAG)** e **OpenAI** para fornecer orientações personalizadas para pequenos agricultores e produtores familiares.
 
 ## 🌟 Características Principais
 
-- **🔗 Integração WhatsApp**: Conexão nativa via EvolutionAPI
-- **🧠 IA Conversacional**: Powered by OpenAI GPT-4o-mini
-- **📚 RAG (Retrieval-Augmented Generation)**: Busca inteligente em documentos
-- **💾 Memória de Conversas**: Histórico contextualizado por sessão
-- **📄 Suporte Multi-formato**: PDF, TXT e CSV
-- **🐳 Deploy Docker**: Containerização completa
-- **⚡ Cache Redis**: Performance otimizada
-- **📊 Health Checks**: Monitoramento de saúde dos serviços
-- **🔧 API RESTful**: Endpoints documentados com OpenAPI
+- **🌾 Assistência Agrícola Especializada**: Orientações técnicas para cultivos, manejo e práticas sustentáveis
+- **💬 Integração WhatsApp**: Acesso via mensagem para agricultores no campo
+- **🧠 IA Agrícola**: OpenAI GPT-4o-mini com conhecimento técnico especializado
+- **🌱 Sensores IoT**: Monitoramento em tempo real de solo, clima e nutrientes
+- **📚 Base de Conhecimento RAG**: Documentos técnicos, manuais e boas práticas
+- **🌤️ Dados Meteorológicos**: Informações climáticas via OpenWeatherMap
+- **🌐 Web Scraping**: Cotações de commodities e notícias do agronegócio
+- **💾 Histórico Inteligente**: Memória contextualizada por propriedade
+- **🐳 Deploy Robusto**: Containerização completa para produção
+- **⚡ Performance Otimizada**: Cache Redis e consultas SQL eficientes
 
 ## 🏗️ Arquitetura do Sistema
 
@@ -21,12 +22,14 @@ Sistema de chatbot inteligente que integra **WhatsApp**, **Retrieval-Augmented G
 **Backend:**
 
 - **Django 5.2.6** - Framework web principal
-- **Django REST Framework** - API REST
-- **LangChain** - Framework para aplicações com LLM
-- **OpenAI** - Modelo de linguagem
-- **Chroma** - Vector database para embeddings
-- **Redis** - Cache e sessões
-- **PostgreSQL** - Banco de dados principal
+- **Django REST Framework** - API REST para webhooks e sensores
+- **LangChain** - Framework para agentes com ferramentas
+- **OpenAI GPT-4o-mini** - Modelo de linguagem especializado
+- **ChromaDB** - Vector database para RAG com OpenAI Embeddings
+- **PostgreSQL** - Dados dos sensores IoT e histórico
+- **Redis** - Cache, sessões e buffer de mensagens
+- **BeautifulSoup** - Web scraping para dados de mercado
+- **OpenWeatherMap API** - Dados meteorológicos em tempo real
 
 **Infrastructure:**
 
@@ -34,44 +37,52 @@ Sistema de chatbot inteligente que integra **WhatsApp**, **Retrieval-Augmented G
 - **EvolutionAPI** - Gateway WhatsApp
 - **Gunicorn** - Servidor WSGI
 
-### Componentes
+### Arquitetura TCC
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   WhatsApp      │    │   EvolutionAPI  │    │   Django API    │
-│                 │◄──►│                 │◄──►│                 │
+│   Agricultor    │◄──►│   Gateway       │◄──►│   TCC           │
 │                 │    │                 │    │   ┌─────────┐   │
-└─────────────────┘    └─────────────────┘    │   │ Chatbot │   │
-                                              │   │ Module  │   │
-┌─────────────────┐    ┌─────────────────┐    │   └─────────┘   │
-│   PostgreSQL    │    │     Redis       │    │   ┌─────────┐   │
-│                 │◄──►│                 │◄──►│   │ Sensors │   │
-│                 │    │                 │    │   │ Module  │   │
-│                 │    │                 │    │   └─────────┘   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                                       ▲
-                       ┌─────────────────┐             │
-                       │   Chroma DB     │◄────────────┘
-                       │  (Vectorstore)  │
-                       └─────────────────┘
+└─────────────────┘    └─────────────────┘    │   │ Agente  │   │
+                                              │   │  + 4    │   │
+┌─────────────────┐    ┌─────────────────┐    │   │Ferramen.│   │
+│   Sensores IoT  │    │  OpenWeatherMap │    │   └─────────┘   │
+│ Solo/Clima/NPK  │◄──►│   API Clima     │◄──►│   ┌─────────┐   │
+│                 │    │                 │    │   │Histórico│   │
+└─────────────────┘    └─────────────────┘    │   │Sensores │   │
+                                              │   └─────────┘   │
+┌─────────────────┐    ┌─────────────────┐    └─────────────────┘
+│   PostgreSQL    │    │     Redis       │           ▲    ▲
+│   Dados IoT     │◄──►│   Cache +       │◄──────────┘    │
+│                 │    │   Sessões       │                │
+└─────────────────┘    └─────────────────┘                │
+                                                          │
+┌─────────────────┐    ┌─────────────────┐                │
+│   ChromaDB      │    │  Web Scraping   │◄───────────────┘
+│ Base Conhecimen │◄──►│ Cotações/News   │
+│                 │    │                 │
+└─────────────────┘    └─────────────────┘
 ```
 
 ## 🚀 Tecnologias e Dependências
 
 ### Dependências Principais
 
-| Tecnologia            | Versão                  | Propósito         |
-| --------------------- | ----------------------- | ----------------- |
-| Python                | ≥3.11,<3.15             | Runtime           |
-| Django                | ^5.2.6                  | Framework web     |
-| Django REST Framework | ^3.16.1                 | API REST          |
-| OpenAI                | ^1.107.0                | Modelos de IA     |
-| LangChain             | ^0.3.27                 | Framework LLM     |
-| LangChain-OpenAI      | ^0.3.33                 | Integração OpenAI |
-| LangChain-Chroma      | ^0.2.6                  | Vector database   |
-| Redis                 | ^6.4.0                  | Cache e sessões   |
-| PostgreSQL            | psycopg2-binary ^2.9.10 | Banco de dados    |
-| FAISS-CPU             | ^1.12.0                 | Busca vetorial    |
+| Tecnologia            | Versão                  | Propósito Agrícola               |
+| --------------------- | ----------------------- | -------------------------------- |
+| Python                | ≥3.11,<3.15             | Runtime principal                |
+| Django                | ^5.2.6                  | Framework web + sensores IoT     |
+| Django REST Framework | ^3.16.1                 | API REST para webhooks           |
+| OpenAI                | ^1.107.0                | TCC - IA agrícola                |
+| LangChain             | ^0.3.27                 | Agente com ferramentas           |
+| LangChain-OpenAI      | ^0.3.33                 | Integração GPT-4o-mini           |
+| LangChain-Chroma      | ^0.2.6                  | RAG - base conhecimento agrícola |
+| BeautifulSoup4        | ^4.12.3                 | Web scraping - cotações/notícias |
+| Requests              | ^2.32.3                 | HTTP client - APIs externas      |
+| Redis                 | ^6.4.0                  | Cache + buffer mensagens         |
+| PostgreSQL            | psycopg2-binary ^2.9.10 | Dados sensores + histórico       |
+| Python-decouple       | ^3.8                    | Configuração segura              |
 
 ### Dependências de Desenvolvimento
 
@@ -116,28 +127,30 @@ OPENAI_API_KEY=sua_chave_openai_aqui
 EVOLUTION_INSTANCE_NAME=chatbot  # Deve ser idêntico ao nome da instância no painel
 AUTHENTICATION_API_KEY=sua_chave_auth_aqui
 
-# Prompts de IA (personalize conforme seu caso de uso)
-AI_CONTEXTUALIZE_PROMPT='Dado um histórico de conversa e a pergunta mais recente do usuário, que pode fazer referência ao contexto anterior, formule uma pergunta independente, que possa ser compreendida sem o histórico da conversa. NÃO responda à pergunta — apenas reformule se necessário; caso contrário, retorne a pergunta como está.'
-
-AI_SYSTEM_PROMPT='Você é um assistente virtual que irá responder dúvidas dos clientes. Use os seguintes trechos de contexto recuperado para responder à pergunta. Se você não souber a resposta, diga que não sabe. Use no máximo três frases e mantenha a resposta concisa. {context}'
+# Prompt (personalize conforme necessário)
+AI_SYSTEM_PROMPT='Você é um assistente técnico agrícola virtual...'  # Ver .env.example para o prompt completo
 ```
 
-### 3. Prepare os Documentos RAG
+### 3. Prepare a Base de Conhecimento Agrícola
 
-Adicione seus documentos na pasta `rag_files/`:
+Adicione documentos técnicos na pasta `rag_files/`:
 
 ```bash
 rag_files/
-├── documento1.pdf
-├── perguntas_frequentes.txt
-└── dados_produtos.csv
+├── manual_cultivo_milho.pdf
+├── controle_pragas_soja.pdf
+├── boas_praticas_irrigacao.txt
+├── tabela_adubacao_npk.csv
+└── calendario_agricola.txt
 ```
 
-**Formatos suportados:**
+**Tipos de Documentos Recomendados:**
 
-- **PDF** - Documentos, manuais, relatórios
-- **TXT** - Textos simples, FAQs
-- **CSV** - Dados estruturados, planilhas
+- **Manuais Técnicos** (PDF) - Cultivo, manejo, equipamentos
+- **Guias de Pragas** (PDF/TXT) - Identificação e controle
+- **Tabelas Técnicas** (CSV) - Adubação, espaçamento, doses
+- **Calendários Agrícolas** (TXT) - Épocas de plantio/colheita
+- **Boletins Técnicos** (PDF) - Pesquisas, novas variedades
 
 Os documentos serão automaticamente:
 
@@ -180,6 +193,60 @@ docker-compose up --build
    - URL: `http://api:8000/api/chatbot/webhook/`
    - Eventos: `MESSAGES_UPSERT`
 
+## 🛠️ Ferramentas do TCC
+
+O TCC possui 4 ferramentas especializadas para auxiliar os agricultores:
+
+### 1. 📚 `rag_search` - Base de Conhecimento Agrícola
+
+**Tecnologia**: ChromaDB + OpenAI Embeddings  
+**Uso**: Consulta documentos técnicos, manuais e boas práticas agrícolas
+
+**Exemplos:**
+
+- "Qual o espaçamento ideal para plantio de milho safrinha?"
+- "Como identificar e controlar a lagarta-do-cartucho no milho?"
+- "Técnicas de irrigação por gotejamento para hortaliças"
+
+### 2. 📊 `sql_select` - Dados dos Sensores IoT
+
+**Tecnologia**: PostgreSQL + Django ORM  
+**Uso**: Consulta histórico de sensores de solo, clima e nutrientes
+
+**Dados Disponíveis:**
+
+- Umidade do solo (%), temperatura (°C), pH
+- NPK - Nitrogênio, Fósforo, Potássio (ppm)
+- Condutividade elétrica, salinidade, TDS
+
+**Exemplos:**
+
+- "Qual foi a média de umidade do solo na semana passada?"
+- "Mostre o pH do solo nos últimos 7 dias"
+- "Níveis de NPK desta semana comparado com o mês anterior"
+
+### 3. 🌤️ `weather_search` - Dados Meteorológicos
+
+**Tecnologia**: OpenWeatherMap API  
+**Uso**: Condições climáticas para decisões agrícolas
+
+**Exemplos:**
+
+- "Condições de vento para aplicação de defensivos hoje?"
+- "Umidade relativa ideal para plantio de hortaliças?"
+- "Previsão de chuva - devo adiar a colheita?"
+
+### 4. 🌐 `web_scraping` - Mercado e Cotações
+
+**Tecnologia**: BeautifulSoup + Requests  
+**Uso**: Preços atuais e notícias do agronegócio
+
+**Exemplos:**
+
+- "Preço atual da saca de milho na CEPEA/ESALQ"
+- "Cotação da arroba do boi gordo no mercado"
+- "Notícias sobre nova cultivar de soja resistente à seca"
+
 ## 🎯 Uso do Sistema
 
 ### API Endpoints
@@ -190,26 +257,33 @@ docker-compose up --build
 | `/api/sensors/webhook/` | POST   | Webhook para sensores (futuro)  |
 | `/admin/`               | GET    | Painel administrativo Django    |
 | `/api/schema/`          | GET    | Documentação OpenAPI            |
-| `/health/`              | GET    | Health check dos serviços       |
+| `/ht/`                  | GET    | Health check dos serviços       |
 
-### Fluxo de Funcionamento
+### Fluxo de Funcionamento do TCC
 
-1. **📱 Mensagem WhatsApp** → EvolutionAPI recebe
-2. **🔗 Webhook** → EvolutionAPI envia para Django
-3. **🧠 Processamento IA:**
-   - Contextualização da mensagem
-   - Busca RAG nos documentos
-   - Geração de resposta com OpenAI
-4. **💾 Memória** → Histórico salvo no Redis
-5. **📤 Resposta** → Enviada via EvolutionAPI → WhatsApp
+1. **📱 Agricultor no WhatsApp** → Envia dúvida técnica
+2. **🔗 EvolutionAPI** → Recebe e encaminha via webhook
+3. **🤖 TCC Processa:**
+   - Analisa contexto da pergunta
+   - Identifica ferramentas necessárias
+   - Executa consultas apropriadas:
+     - 📚 RAG → Busca conhecimento técnico
+     - 📊 SQL → Consulta sensores IoT
+     - 🌤️ Weather → Dados meteorológicos
+     - 🌐 Scraping → Cotações/notícias
+4. **🧠 OpenAI** → Gera resposta técnica personalizada
+5. **💾 Redis** → Salva histórico da propriedade
+6. **📤 Resposta** → Enviada via WhatsApp ao agricultor
 
-### Estrutura dos Dados RAG
+### Processamento da Base de Conhecimento
 
-Os documentos são processados e divididos em chunks de:
+Os documentos agrícolas são processados e otimizados para busca:
 
-- **Tamanho**: 1000 caracteres
-- **Sobreposição**: 200 caracteres
+- **Chunking**: 1000 caracteres com sobreposição de 200
 - **Embeddings**: OpenAI text-embedding-ada-002
+- **Vectorstore**: ChromaDB para busca semântica
+- **Indexação**: Automática ao reiniciar o sistema
+- **Busca**: Similaridade vetorial + contexto agrícola
 
 ## 🔧 Desenvolvimento
 
@@ -217,23 +291,26 @@ Os documentos são processados e divididos em chunks de:
 
 ```
 backend/
-├── 📁 chatbot/              # Módulo principal do chatbot
-│   ├── chains.py           # Chains LangChain
-│   ├── config.py          # Configurações
-│   ├── evolution_api.py   # Cliente EvolutionAPI
-│   ├── memory.py          # Gestão de memória
-│   ├── prompts.py         # Templates de prompts
-│   ├── vectorstore.py     # Gestão Chroma DB
-│   └── views.py           # Views da API
-├── 📁 sensors/             # Módulo de sensores (futuro)
-├── 📁 core/               # Configurações Django
-├── 📁 rag_files/          # Documentos para RAG
+├── 📁 chatbot/              # TCC - Módulo principal
+│   ├── chains.py           # Agente LangChain + Ferramentas
+│   ├── config.py          # Configurações (incluindo AI_SYSTEM_PROMPT)
+│   ├── evolution_api.py   # Cliente WhatsApp
+│   ├── memory.py          # Histórico por propriedade
+│   ├── prompts.py         # Prompt do TCC
+│   ├── tools.py           # 4 Ferramentas (RAG, SQL, Weather, Scraping)
+│   ├── vectorstore.py     # ChromaDB - Base conhecimento
+│   └── views.py           # Webhooks e API
+├── 📁 sensors/             # Módulo sensores IoT
+│   ├── models.py          # Modelo dados sensores
+│   └── views.py           # Webhook sensores
+├── 📁 core/               # Django core settings
+├── 📁 rag_files/          # 📚 Documentos técnicos agrícolas
 │   └── processed/         # Documentos processados
-├── 📁 vectorstore/        # Banco vetorial Chroma
-├── docker-compose.yml     # Orquestração containers
-├── Dockerfile            # Imagem Python
-├── pyproject.toml        # Dependências Poetry
-└── .env.example          # Template variáveis
+├── 📁 vectorstore/        # 🗄️ ChromaDB storage
+├── docker-compose.yml     # Containers (Django + Redis + PostgreSQL)
+├── Dockerfile            # Imagem Python otimizada
+├── pyproject.toml        # Poetry - dependências
+└── .env.example          # Variáveis (incluindo prompt personalizado)
 ```
 
 ### Comandos de Desenvolvimento
@@ -286,11 +363,28 @@ grep OPENAI_API_KEY .env
 - Verifique se o webhook está configurado: `http://api:8000/api/chatbot/webhook/`
 - Confirme se o evento `MESSAGES_UPSERT` está habilitado
 
-**❌ "No documents found for RAG"**
+**❌ "TCC não encontra informações técnicas"**
 
 ```bash
-# Verifique se há documentos processados
+# Verifique se há documentos agrícolas processados
 ls -la rag_files/processed/
+
+# Adicione mais documentos técnicos em rag_files/
+# Reinicie o container para reprocessar
+docker-compose restart api
+```
+
+**❌ "Dados dos sensores não aparecem"**
+
+```bash
+# Verifique se há dados na tabela sensors_sensordata
+docker-compose exec db psql -U postgres -d tcc -c "SELECT COUNT(*) FROM sensors_sensordata;"
+
+# Teste a ferramenta SQL diretamente no Django shell
+docker-compose exec api python manage.py shell
+>>> from chatbot.tools import SQLSelectTool
+>>> tool = SQLSelectTool()
+>>> tool._run("SELECT COUNT(*) FROM sensors_sensordata")
 ```
 
 ### Logs e Debugging
@@ -306,7 +400,7 @@ docker-compose logs evolution-api
 docker-compose logs
 
 # Health check
-curl http://localhost:8000/health/
+curl http://localhost:8000/ht/
 ```
 
 ## 📊 Monitoramento
@@ -322,9 +416,52 @@ curl http://localhost:8000/health/
 O sistema inclui health checks em:
 
 ```
-http://localhost:8000/health/
+http://localhost:8000/ht/
 ```
 
----
+## 🌱 Customização do TCC
 
-**⭐ Se este projeto foi útil, considere dar uma estrela no repositório!**
+### Personalizando o Prompt
+
+Edite a variável `AI_SYSTEM_PROMPT` no arquivo `.env` para:
+
+- Adaptar a linguagem para sua região
+- Incluir cultivos específicos da sua área
+- Personalizar exemplos para seus clientes
+- Adicionar informações sobre sua propriedade
+
+### Adicionando Novas Ferramentas
+
+1. **Crie uma nova ferramenta** em `chatbot/tools.py`:
+
+```python
+class MinhaFerramentaTool(BaseTool):
+    name: str = "minha_ferramenta"
+    description: str = "Descrição detalhada..."
+
+    def _run(self, parametros) -> str:
+        # Sua lógica aqui
+        return resultado
+```
+
+2. **Adicione à lista** em `get_tools()`:
+
+```python
+def get_tools() -> List[BaseTool]:
+    return [
+        RAGSearchTool(),
+        WeatherTool(),
+        WebScrapingTool(),
+        SQLSelectTool(),
+        MinhaFerramentaTool()  # Nova ferramenta
+    ]
+```
+
+### Expandindo a Base de Dados
+
+Para adicionar novos tipos de sensores:
+
+1. **Modifique o modelo** em `sensors/models.py`
+2. **Crie migrations**: `python manage.py makemigrations`
+3. **Aplique**: `python manage.py migrate`
+4. **Atualize** a descrição da ferramenta `sql_select`
