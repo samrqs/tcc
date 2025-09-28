@@ -462,6 +462,7 @@ class TestConfig:
     def test_config_imports(self):
         """Testa se todas as configurações podem ser importadas"""
         from .config import (
+            AI_SYSTEM_PROMPT,
             BUFFER_KEY_SUFIX,
             BUFFER_TTL,
             DEBOUNCE_SECONDS,
@@ -481,6 +482,7 @@ class TestConfig:
             OPENAI_API_KEY,
             OPENAI_MODEL_NAME,
             OPENAI_MODEL_TEMPERATURE,
+            AI_SYSTEM_PROMPT,
             EVOLUTION_API_URL,
             EVOLUTION_INSTANCE_NAME,
             EVOLUTION_AUTHENTICATION_API_KEY,

@@ -115,6 +115,9 @@ OPENAI_API_KEY=sua_chave_openai_aqui
 # EvolutionAPI
 EVOLUTION_INSTANCE_NAME=chatbot  # Deve ser idêntico ao nome da instância no painel
 AUTHENTICATION_API_KEY=sua_chave_auth_aqui
+
+# Prompt do AgriAssist (personalize conforme necessário)
+AI_SYSTEM_PROMPT='Você é um assistente técnico agrícola virtual...'  # Ver .env.example para o prompt completo
 ```
 
 ### 3. Prepare os Documentos RAG
