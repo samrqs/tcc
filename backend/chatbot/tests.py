@@ -462,8 +462,6 @@ class TestConfig:
     def test_config_imports(self):
         """Testa se todas as configurações podem ser importadas"""
         from .config import (
-            AI_CONTEXTUALIZE_PROMPT,
-            AI_SYSTEM_PROMPT,
             BUFFER_KEY_SUFIX,
             BUFFER_TTL,
             DEBOUNCE_SECONDS,
@@ -483,8 +481,6 @@ class TestConfig:
             OPENAI_API_KEY,
             OPENAI_MODEL_NAME,
             OPENAI_MODEL_TEMPERATURE,
-            AI_CONTEXTUALIZE_PROMPT,
-            AI_SYSTEM_PROMPT,
             EVOLUTION_API_URL,
             EVOLUTION_INSTANCE_NAME,
             EVOLUTION_AUTHENTICATION_API_KEY,
@@ -501,53 +497,17 @@ class TestConfig:
 
 
 class TestPrompts:
-    def test_contextualize_prompt_structure(self):
-        """Testa a estrutura do prompt de contextualização"""
-        from .config import AI_CONTEXTUALIZE_PROMPT
-        from .prompts import contextualize_prompt
+    def test_agent_prompt_structure(self):
+        """Testa a estrutura do prompt do agente"""
+        from .prompts import get_agent_prompt
 
-        assert contextualize_prompt is not None
-        assert len(contextualize_prompt.messages) == 3
-
-        # Verifica se contém os elementos esperados
-        system_message = contextualize_prompt.messages[0]
-        assert system_message.prompt.template == AI_CONTEXTUALIZE_PROMPT
-
-    def test_qa_prompt_structure(self):
-        """Testa a estrutura do prompt de Q&A"""
-        from .config import AI_SYSTEM_PROMPT
-        from .prompts import qa_prompt
-
-        assert qa_prompt is not None
-        assert len(qa_prompt.messages) == 3
+        agent_prompt = get_agent_prompt()
+        assert agent_prompt is not None
+        assert len(agent_prompt.messages) == 4
 
         # Verifica se contém os elementos esperados
-        system_message = qa_prompt.messages[0]
-        assert system_message.prompt.template == AI_SYSTEM_PROMPT
-
-    def test_prompts_contain_placeholders(self):
-        """Testa se os prompts contêm os placeholders necessários"""
-        from .prompts import contextualize_prompt, qa_prompt
-
-        # Verifica se o contextualize_prompt tem os placeholders corretos
-        contextualize_input_vars = set()
-        for message in contextualize_prompt.messages:
-            if hasattr(message, "variable_name"):
-                contextualize_input_vars.add(message.variable_name)
-            elif hasattr(message, "prompt") and hasattr(
-                message.prompt, "input_variables"
-            ):
-                contextualize_input_vars.update(message.prompt.input_variables)
-
-        # Verifica se o qa_prompt tem os placeholders corretos
-        qa_input_vars = set()
-        for message in qa_prompt.messages:
-            if hasattr(message, "variable_name"):
-                qa_input_vars.add(message.variable_name)
-            elif hasattr(message, "prompt") and hasattr(
-                message.prompt, "input_variables"
-            ):
-                qa_input_vars.update(message.prompt.input_variables)
+        system_message = agent_prompt.messages[0]
+        assert system_message.prompt.template is not None
 
 
 class TestTools:

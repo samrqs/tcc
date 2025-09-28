@@ -59,8 +59,6 @@ jobs:
             -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
             -e OPENAI_MODEL_NAME=${{ secrets.OPENAI_MODEL_NAME }} \
             -e OPENAI_MODEL_TEMPERATURE=${{ secrets.OPENAI_MODEL_TEMPERATURE }} \
-            -e AI_CONTEXTUALIZE_PROMPT=${{ secrets.AI_CONTEXTUALIZE_PROMPT }} \
-            -e AI_SYSTEM_PROMPT=${{ secrets.AI_SYSTEM_PROMPT }} \
             -e POSTGRES_ENGINE=${{ secrets.POSTGRES_ENGINE }} \
             -e POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
             -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \

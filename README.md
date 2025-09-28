@@ -115,11 +115,6 @@ OPENAI_API_KEY=sua_chave_openai_aqui
 # EvolutionAPI
 EVOLUTION_INSTANCE_NAME=chatbot  # Deve ser idêntico ao nome da instância no painel
 AUTHENTICATION_API_KEY=sua_chave_auth_aqui
-
-# Prompts de IA (personalize conforme seu caso de uso)
-AI_CONTEXTUALIZE_PROMPT='Dado um histórico de conversa e a pergunta mais recente do usuário, que pode fazer referência ao contexto anterior, formule uma pergunta independente, que possa ser compreendida sem o histórico da conversa. NÃO responda à pergunta — apenas reformule se necessário; caso contrário, retorne a pergunta como está.'
-
-AI_SYSTEM_PROMPT='Você é um assistente virtual que irá responder dúvidas dos clientes. Use os seguintes trechos de contexto recuperado para responder à pergunta. Se você não souber a resposta, diga que não sabe. Use no máximo três frases e mantenha a resposta concisa. {context}'
 ```
 
 ### 3. Prepare os Documentos RAG
