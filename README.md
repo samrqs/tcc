@@ -37,32 +37,85 @@ Sistema inteligente de assistência técnica agrícola que integra **WhatsApp**,
 - **EvolutionAPI** - Gateway WhatsApp
 - **Gunicorn** - Servidor WSGI
 
-### Arquitetura TCC
+### Arquitetura do TCC
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   WhatsApp      │    │   EvolutionAPI  │    │   Django API    │
-│   Agricultor    │◄──►│   Gateway       │◄──►│   TCC           │
-│                 │    │                 │    │   ┌─────────┐   │
-└─────────────────┘    └─────────────────┘    │   │ Agente  │   │
-                                              │   │  + 4    │   │
-┌─────────────────┐    ┌─────────────────┐    │   │Ferramen.│   │
-│   Sensores IoT  │    │  OpenWeatherMap │    │   └─────────┘   │
-│ Solo/Clima/NPK  │◄──►│   API Clima     │◄──►│   ┌─────────┐   │
-│                 │    │                 │    │   │Histórico│   │
-└─────────────────┘    └─────────────────┘    │   │Sensores │   │
-                                              │   └─────────┘   │
-┌─────────────────┐    ┌─────────────────┐    └─────────────────┘
-│   PostgreSQL    │    │     Redis       │           ▲    ▲
-│   Dados IoT     │◄──►│   Cache +       │◄──────────┘    │
-│                 │    │   Sessões       │                │
-└─────────────────┘    └─────────────────┘                │
-                                                          │
-┌─────────────────┐    ┌─────────────────┐                │
-│   ChromaDB      │    │  Web Scraping   │◄───────────────┘
-│ Base Conhecimen │◄──►│ Cotações/News   │
-│                 │    │                 │
-└─────────────────┘    └─────────────────┘
+```mermaid
+graph TB
+    %% Styling
+    classDef userClass fill:#e8f5e8,stroke:#4CAF50,stroke-width:3px,color:#2E7D32
+    classDef gatewayClass fill:#e3f2fd,stroke:#2196F3,stroke-width:2px,color:#1565C0
+    classDef coreClass fill:#fff3e0,stroke:#FF9800,stroke-width:3px,color:#E65100
+    classDef toolClass fill:#f3e5f5,stroke:#9C27B0,stroke-width:2px,color:#6A1B9A
+    classDef dbClass fill:#fce4ec,stroke:#E91E63,stroke-width:2px,color:#AD1457
+    classDef iotClass fill:#e0f2f1,stroke:#009688,stroke-width:2px,color:#00695C
+
+    %% User Layer
+    subgraph USER[" 👨‍🌾 AGRICULTOR "]
+        WA["📱 WhatsApp<br/>Agricultor no Campo"]
+    end
+
+    %% Gateway Layer
+    subgraph GATEWAY[" 🌐 GATEWAY "]
+        EVO["🔗 EvolutionAPI<br/>Gateway WhatsApp"]
+    end
+
+    %% Core System
+    subgraph CORE[" 🤖 TCC CORE "]
+        API["🐍 Django API<br/>Sistema Principal"]
+        AGENT["🧠 Agente Inteligente<br/>LangChain + OpenAI"]
+        MEMORY["💾 Memória<br/>Histórico Conversas"]
+    end
+
+    %% Tools Layer
+    subgraph TOOLS[" 🛠️ FERRAMENTAS ESPECIALIZADAS "]
+        RAG["📚 RAG Search<br/>Base Conhecimento<br/>ChromaDB + Embeddings"]
+        SQL["📊 SQL Select<br/>Dados Sensores IoT<br/>PostgreSQL"]
+        WEATHER["🌤️ Weather API<br/>Dados Meteorológicos<br/>OpenWeatherMap"]
+        SCRAPING["🌐 Web Scraping<br/>Cotações & Notícias<br/>BeautifulSoup"]
+    end
+
+    %% Data Sources
+    subgraph DATASOURCES[" 📡 FONTES DE DADOS "]
+        SENSORS["🌱 Sensores IoT<br/>Solo • pH • NPK<br/>Temperatura • Umidade"]
+        WEATHER_API["☁️ OpenWeatherMap<br/>Clima Tempo Real"]
+        WEB_SOURCES["🌍 Web Sources<br/>CEPEA • Notícias<br/>Commodities"]
+    end
+
+    %% Storage Layer
+    subgraph STORAGE[" 🗄️ ARMAZENAMENTO "]
+        POSTGRES["🐘 PostgreSQL<br/>Dados Sensores<br/>Histórico IoT"]
+        REDIS["⚡ Redis<br/>Cache & Sessões<br/>Buffer Mensagens"]
+        CHROMA["🔍 ChromaDB<br/>Vectorstore<br/>Documentos RAG"]
+    end
+
+    %% Connections with labels
+    WA <==> |"Mensagens"| EVO
+    EVO <==> |"Webhook"| API
+    API <==> |"Processa"| AGENT
+    API <==> |"Histórico"| MEMORY
+
+    AGENT -.-> |"Usa"| RAG
+    AGENT -.-> |"Usa"| SQL
+    AGENT -.-> |"Usa"| WEATHER
+    AGENT -.-> |"Usa"| SCRAPING
+
+    RAG <--> |"Busca"| CHROMA
+    SQL <--> |"Query"| POSTGRES
+    WEATHER <--> |"API"| WEATHER_API
+    SCRAPING <--> |"Extrai"| WEB_SOURCES
+
+    SENSORS --> |"Coleta"| POSTGRES
+    MEMORY <--> |"Cache"| REDIS
+    API <--> |"Dados"| POSTGRES
+    API <--> |"Session"| REDIS
+
+    %% Apply styles
+    class WA userClass
+    class EVO gatewayClass
+    class API,AGENT,MEMORY coreClass
+    class RAG,SQL,WEATHER,SCRAPING toolClass
+    class POSTGRES,REDIS,CHROMA dbClass
+    class SENSORS,WEATHER_API,WEB_SOURCES iotClass
 ```
 
 ## 🚀 Tecnologias e Dependências
