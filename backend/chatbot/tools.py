@@ -32,13 +32,18 @@ class RAGSearchTool(BaseTool):
 
     name: str = "rag_search"
     description: str = """
-    Busque informações relevantes nos documentos da base de conhecimento.
-    Use esta ferramenta para responder perguntas gerais ou encontrar trechos de referência.
+    Busque informações técnicas na base de conhecimento agrícola usando tecnologia RAG (Retrieval-Augmented Generation) com ChromaDB e OpenAI Embeddings.
     
-    Exemplos de uso:
-    - "Como plantar milho?"
-    - "Quais práticas de irrigação existem?"
-    - "Últimas técnicas para controle natural de pragas"
+    Esta ferramenta acessa documentos técnicos, manuais agrícolas, artigos científicos e guias de boas práticas armazenados na base vetorial.
+    Use para consultas sobre conhecimento agronômico, técnicas de cultivo, manejo de pragas e doenças, fertilização e práticas sustentáveis.
+    
+    Exemplos de uso realistas:
+    - "Qual o espaçamento ideal para plantio de milho safrinha?"
+    - "Como identificar e controlar a lagarta-do-cartucho no milho?"
+    - "Quais nutrientes são essenciais na fase vegetativa da soja?"
+    - "Técnicas de irrigação por gotejamento para hortaliças"
+    - "Como fazer rotação de culturas para melhorar o solo?"
+    - "Manejo integrado de pragas em cultivos orgânicos"
     """
     args_schema: Type[BaseModel] = RAGSearchInput
 
@@ -116,14 +121,21 @@ class WeatherTool(BaseTool):
 
     name: str = "weather_search"
     description: str = """
-    Consulte informações meteorológicas atuais para uma localização específica.
-    Use esta ferramenta para obter dados sobre temperatura, umidade, pressão atmosférica 
-    e condições climáticas que podem afetar a agricultura.
+    Consulte informações meteorológicas em tempo real usando a API OpenWeatherMap.
     
-    Exemplos de uso:
-    - "Qual o clima atual em Parelheiros?"
-    - "Está chovendo na região?"
-    - "Qual a umidade do ar hoje?"
+    Obtenha dados climáticos precisos incluindo temperatura, umidade relativa do ar, pressão atmosférica, 
+    velocidade do vento e condições meteorológicas atuais. Essencial para decisões agrícolas como timing 
+    de plantio, irrigação, aplicação de defensivos e colheita.
+    
+    Tecnologia: API REST OpenWeatherMap com dados atualizados a cada 10 minutos.
+    
+    Exemplos de uso realistas:
+    - "Qual a temperatura e umidade atual em Parelheiros para decidir sobre irrigação?"
+    - "Condições de vento para aplicação de defensivos hoje?"
+    - "Previsão de chuva para os próximos dias - devo adiar a colheita?"
+    - "Umidade relativa ideal para plantio de hortaliças?"
+    - "Temperatura do solo favorável para germinação do milho?"
+    - "Condições climáticas para secagem natural dos grãos?"
     """
     args_schema: Type[BaseModel] = WeatherInput
 
@@ -227,14 +239,22 @@ class WebScrapingTool(BaseTool):
 
     name: str = "web_scraping"
     description: str = """
-    Extrai informações de páginas web usando BeautifulSoup.
-    Use esta ferramenta para obter conteúdo de sites, notícias sobre agricultura,
-    preços de commodities, informações técnicas ou qualquer conteúdo web relevante.
+    Extrai informações atualizadas de páginas web usando BeautifulSoup (Python HTML parser).
     
-    Exemplos de uso:
-    - "Extrair informações sobre preços do milho de uma página"
-    - "Buscar notícias sobre agricultura sustentável"
-    - "Obter dados técnicos de equipamentos agrícolas"
+    Acesse sites especializados em agricultura para obter cotações de commodities em tempo real, 
+    notícias do setor agrícola, informações sobre novos produtos, técnicas e tecnologias. 
+    Ferramenta essencial para acompanhar tendências de mercado e inovações no agronegócio.
+    
+    Tecnologia: Web scraping com BeautifulSoup, requests HTTP e parsing CSS seletores.
+    
+    Exemplos de uso realistas:
+    - "Preço atual da saca de milho na CEPEA/ESALQ hoje"
+    - "Cotação da arroba do boi gordo no mercado de Araçatuba"
+    - "Notícias sobre nova cultivar de soja resistente à seca"
+    - "Informações técnicas sobre pulverizadores autopropelidos"
+    - "Preços de fertilizantes NPK no mercado nacional"
+    - "Lançamentos de defensivos registrados no MAPA"
+    - "Tendências do mercado de orgânicos no Brasil"
     """
     args_schema: Type[BaseModel] = WebScrapingInput
 
@@ -405,33 +425,37 @@ class SQLSelectTool(BaseTool):
 
     name: str = "sql_select"
     description: str = """
-    Realiza uma query no Postgres para buscar informações sobre as tabelas do banco de dados.
+    Consulta dados históricos dos sensores IoT agrícolas no banco PostgreSQL usando queries SQL.
     
-    Só pode realizar operações de busca (SELECT), não é permitido a geração de qualquer operação de escrita.
+    Acesse dados em tempo real e históricos coletados por sensores instalados na propriedade rural,
+    incluindo parâmetros essenciais para monitoramento do solo e tomada de decisões agrícolas.
+    Ideal para análise de tendências, identificação de problemas e otimização do manejo.
     
-    Tabelas disponíveis:
+    Tecnologia: PostgreSQL com Django ORM, consultas SQL otimizadas com limite de segurança.
     
-    sensors_sensordata:
-    - id (bigint): ID único do registro
-    - timestamp (timestamp with time zone): Data/hora da leitura
-    - umidade (double precision): Umidade do solo (%)
-    - condutividade (double precision): Condutividade elétrica (µS/cm)
-    - temperatura (double precision): Temperatura (°C)
-    - ph (double precision): pH do solo
-    - nitrogenio (double precision): Nitrogênio (ppm)
-    - fosforo (double precision): Fósforo (ppm)
-    - potassio (double precision): Potássio (ppm)
-    - salinidade (double precision): Salinidade (ppm)
-    - tds (double precision): Total de sólidos dissolvidos (ppm)
+    Tabela sensors_sensordata disponível:
+    - id (bigint): Identificador único do registro
+    - timestamp (timestamp): Data/hora da coleta (com fuso horário)
+    - umidade (double): Umidade volumétrica do solo (%)
+    - condutividade (double): Condutividade elétrica (µS/cm) - indica salinidade
+    - temperatura (double): Temperatura do solo (°C)
+    - ph (double): Potencial hidrogeniônico - acidez/alcalinidade do solo
+    - nitrogenio (double): Concentração de nitrogênio disponível (ppm)
+    - fosforo (double): Concentração de fósforo disponível (ppm)
+    - potassio (double): Concentração de potássio disponível (ppm)
+    - salinidade (double): Nível de sais dissolvidos (ppm)
+    - tds (double): Total de sólidos dissolvidos (ppm)
     
-    IMPORTANTE: 
-    - Apenas queries SELECT são permitidas por motivos de segurança
-    - Todas operações retornam um máximo de 50 itens
-    - Use %s para parâmetros e forneça a lista de valores no campo params
+    SEGURANÇA E LIMITES:
+    - Apenas operações SELECT permitidas (proteção contra alterações)
+    - Máximo 50 registros por consulta (otimização performance)
+    - Use parâmetros %s para valores dinâmicos (prevenção SQL injection)
     
-    Exemplos de uso:
-    - query: "SELECT timestamp, temperatura, umidade FROM sensors_sensordata WHERE timestamp > %s", params: ["2025-01-01"]
-    - query: "SELECT COUNT(*) FROM sensors_sensordata WHERE ph BETWEEN %s AND %s", params: [6.0, 8.0]
+    Exemplos de consultas realistas:
+    - query: "SELECT AVG(umidade), AVG(temperatura) FROM sensors_sensordata WHERE timestamp >= %s", params: ["2025-09-20"]
+    - query: "SELECT timestamp, ph FROM sensors_sensordata WHERE ph < %s ORDER BY timestamp DESC", params: [6.0]
+    - query: "SELECT DATE(timestamp), AVG(nitrogenio), AVG(fosforo), AVG(potassio) FROM sensors_sensordata WHERE timestamp >= %s GROUP BY DATE(timestamp)", params: ["2025-09-01"]
+    - query: "SELECT COUNT(*) FROM sensors_sensordata WHERE umidade < %s AND timestamp >= %s", params: [30.0, "2025-09-25"]
     """
     args_schema: Type[BaseModel] = SQLSelectInput
 
