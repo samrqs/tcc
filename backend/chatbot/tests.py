@@ -293,6 +293,151 @@ class TestVectorstore:
             mock_external_services["chroma"].assert_called()
             assert result is not None
 
+    def test_load_documents_direct_call(self, mock_external_services):
+        """Testa a função load_documents diretamente"""
+        from .vectorstore import load_documents
+
+        # Criar diretórios e arquivos de teste
+        processed_dir = os.path.join(self.test_files_dir, "processed")
+        os.makedirs(processed_dir, exist_ok=True)
+
+        # Arquivo na pasta principal
+        main_file = os.path.join(self.test_files_dir, "main.txt")
+        with open(main_file, "w") as f:
+            f.write("main content")
+
+        # Arquivo na pasta processed
+        processed_file = os.path.join(processed_dir, "processed.txt")
+        with open(processed_file, "w") as f:
+            f.write("processed content")
+
+        with patch("chatbot.vectorstore.RAG_FILES_DIR", self.test_files_dir), patch(
+            "chatbot.vectorstore.load_documents_from_directory"
+        ) as mock_load_from_dir:
+
+            # Mock retorna documentos diferentes para cada diretório
+            mock_load_from_dir.side_effect = lambda dir_path: (
+                [MagicMock()] if "processed" in dir_path else [MagicMock(), MagicMock()]
+            )
+
+            docs = load_documents()
+
+            # Deve ter chamado para ambos os diretórios
+            assert mock_load_from_dir.call_count == 2
+            # Deve retornar 3 documentos total (1 + 2)
+            assert len(docs) == 3
+
+    def test_load_documents_from_directory_error_handling(self, mock_external_services):
+        """Testa o tratamento de erro no carregamento de documentos"""
+        from .vectorstore import load_documents_from_directory
+
+        # Criar arquivo de teste
+        test_file = os.path.join(self.test_files_dir, "error.pdf")
+        with open(test_file, "w") as f:
+            f.write("test content")
+
+        with patch("chatbot.vectorstore.PyPDFLoader") as mock_loader:
+            # Simula erro no carregamento
+            mock_loader.return_value.load.side_effect = Exception("Load error")
+
+            docs = load_documents_from_directory(self.test_files_dir)
+
+            # Deve retornar lista vazia em caso de erro
+            assert len(docs) == 0
+            mock_loader.assert_called_once()
+
+    def test_load_documents_from_directory_nonexistent(self, mock_external_services):
+        """Testa carregamento de diretório inexistente"""
+        from .vectorstore import load_documents_from_directory
+
+        docs = load_documents_from_directory("/path/que/nao/existe")
+        assert len(docs) == 0
+
+    def test_get_vectorstore_existing_with_data(self, mock_external_services):
+        """Testa carregamento de vectorstore existente com dados"""
+        from .vectorstore import get_vectorstore
+
+        # Mock vectorstore com dados existentes
+        mock_vectorstore = MagicMock()
+        mock_vectorstore.similarity_search.return_value = [MagicMock()]
+        mock_external_services["chroma"].return_value = mock_vectorstore
+
+        result = get_vectorstore()
+
+        # Deve retornar o vectorstore existente sem carregar documentos
+        assert result == mock_vectorstore
+        mock_vectorstore.similarity_search.assert_called_once_with("test", k=1)
+
+    def test_get_vectorstore_exception_in_loading(self, mock_external_services):
+        """Testa tratamento de exceção ao carregar vectorstore existente"""
+        from .vectorstore import get_vectorstore
+
+        with patch("chatbot.vectorstore.load_documents") as mock_load_docs:
+            # Simula erro apenas na primeira chamada (carregamento do existente)
+            mock_vectorstore_error = MagicMock()
+            mock_vectorstore_error.similarity_search.side_effect = Exception(
+                "Search error"
+            )
+
+            # Segunda chamada retorna vectorstore válido
+            mock_vectorstore_ok = MagicMock()
+            mock_external_services["chroma"].side_effect = [
+                mock_vectorstore_error,
+                mock_vectorstore_ok,
+            ]
+
+            # Mock documento com page_content como string
+            mock_doc = MagicMock()
+            mock_doc.page_content = "Test document content"
+            mock_doc.metadata = {"source": "test"}
+            mock_docs = [mock_doc]
+            mock_load_docs.return_value = mock_docs
+
+            result = get_vectorstore()
+
+            # Deve ter tentado carregar documentos
+            mock_load_docs.assert_called_once()
+            assert result is not None
+
+    def test_get_vectorstore_batch_processing_error(self, mock_external_services):
+        """Testa tratamento de erro no processamento em lotes"""
+        from .vectorstore import get_vectorstore
+
+        with patch("chatbot.vectorstore.load_documents") as mock_load_docs, patch(
+            "chatbot.vectorstore.RecursiveCharacterTextSplitter"
+        ) as mock_splitter:
+
+            # Mock vectorstore vazio (força recriação)
+            mock_vectorstore = MagicMock()
+            mock_vectorstore.similarity_search.return_value = []
+            # Simula erro na adição de textos
+            mock_vectorstore.add_texts.side_effect = Exception("Add texts error")
+            mock_external_services["chroma"].return_value = mock_vectorstore
+
+            # Cria muitos documentos para forçar processamento em lotes
+            mock_docs = []
+            for i in range(60):  # Mais que 50 para múltiplos lotes
+                mock_doc = MagicMock()
+                mock_doc.page_content = f"Test document content {i}"
+                mock_doc.metadata = {"source": f"test{i}"}
+                mock_docs.append(mock_doc)
+            mock_load_docs.return_value = mock_docs
+
+            # Mock splits
+            mock_splits = []
+            for i in range(120):  # 2 lotes + resto
+                mock_split = MagicMock()
+                mock_split.page_content = f"Split content {i}"
+                mock_split.metadata = {"source": f"split{i}"}
+                mock_splits.append(mock_split)
+            mock_splitter.return_value.split_documents.return_value = mock_splits
+
+            result = get_vectorstore()
+
+            # Deve ter tentado processar em lotes
+            assert mock_vectorstore.add_texts.call_count > 0
+            assert result is not None
+
 
 class TestEvolutionApi:
     def test_send_whatsapp_message(self, mock_external_services):
@@ -964,3 +1109,147 @@ class TestTools:
         result = await tool._arun("url-invalida")
 
         assert "URL inválida" in result
+
+    def test_weather_tool_api_authentication_error(self):
+        """Testa tratamento de erro de autenticação da API"""
+        from .tools import WeatherTool
+
+        with patch("chatbot.tools.OPENWEATHER_API_KEY", "invalid_key"), patch(
+            "chatbot.tools.requests.get"
+        ) as mock_get:
+            mock_response = MagicMock()
+            mock_response.status_code = 401
+            mock_get.return_value = mock_response
+
+            tool = WeatherTool()
+            result = tool._run("São Paulo")
+
+            assert "Erro de autenticação na API meteorológica" in result
+
+    def test_weather_tool_api_request_error(self):
+        """Testa tratamento de erro genérico da API"""
+        from .tools import WeatherTool
+
+        with patch("chatbot.tools.OPENWEATHER_API_KEY", "valid_key"), patch(
+            "chatbot.tools.requests.get"
+        ) as mock_get:
+            mock_response = MagicMock()
+            mock_response.status_code = 500
+            mock_get.return_value = mock_response
+
+            tool = WeatherTool()
+            result = tool._run("São Paulo")
+
+            assert "Erro ao consultar dados meteorológicos: 500" in result
+
+    def test_weather_tool_connection_error(self):
+        """Testa tratamento de erro de conexão"""
+        import requests
+
+        from .tools import WeatherTool
+
+        with patch("chatbot.tools.OPENWEATHER_API_KEY", "valid_key"), patch(
+            "chatbot.tools.requests.get"
+        ) as mock_get:
+            mock_get.side_effect = requests.RequestException("Connection error")
+
+            tool = WeatherTool()
+            result = tool._run("São Paulo")
+
+            assert "Erro de conexão ao consultar dados meteorológicos" in result
+
+    def test_web_scraping_tool_connection_error(self):
+        """Testa tratamento de erro de conexão no web scraping"""
+        import requests
+
+        from .tools import WebScrapingTool
+
+        with patch("chatbot.tools.requests.get") as mock_get:
+            mock_get.side_effect = requests.RequestException("Connection error")
+
+            tool = WebScrapingTool()
+            result = tool._run("https://example.com")
+
+            assert "Erro de conexão" in result
+
+    def test_web_scraping_tool_parsing_error(self):
+        """Testa tratamento de erro de parsing"""
+        from .tools import WebScrapingTool
+
+        with patch("chatbot.tools.requests.get") as mock_get:
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.text = "<html><body><h1>Test</h1></body></html>"
+            mock_get.return_value = mock_response
+
+            # Simula erro no BeautifulSoup
+            with patch("chatbot.tools.BeautifulSoup") as mock_soup:
+                mock_soup.side_effect = Exception("Parsing error")
+
+                tool = WebScrapingTool()
+                result = tool._run("https://example.com")
+
+                assert "Erro ao extrair informações da página" in result
+
+    def test_sql_select_tool_connection_error(self):
+        """Testa tratamento de erro de conexão na base de dados"""
+        from django.db import OperationalError
+
+        from .tools import SQLSelectTool
+
+        with patch("chatbot.tools.connection") as mock_connection:
+            mock_connection.cursor.side_effect = OperationalError("Connection failed")
+
+            tool = SQLSelectTool()
+            result = tool._run("SELECT * FROM sensors_sensordata LIMIT 1", [])
+
+            assert "Erro ao executar query" in result
+
+    def test_sql_select_tool_prevent_users_table_access(self):
+        """Testa que o acesso à tabela users é bloqueado"""
+        from .tools import SQLSelectTool
+
+        tool = SQLSelectTool()
+        result = tool._run("SELECT * FROM auth_user", [])
+
+        assert "Erro ao executar query" in result
+
+    def test_sql_select_tool_block_dangerous_keywords(self):
+        """Testa bloqueio de palavras-chave perigosas"""
+        from .tools import SQLSelectTool
+
+        tool = SQLSelectTool()
+
+        # Teste DROP
+        result = tool._run("DROP TABLE test", [])
+        assert "Apenas queries SELECT são permitidas" in result
+
+        # Teste DELETE
+        result = tool._run("DELETE FROM test", [])
+        assert "Apenas queries SELECT são permitidas" in result
+
+        # Teste UPDATE
+        result = tool._run("UPDATE test SET x=1", [])
+        assert "Apenas queries SELECT são permitidas" in result
+
+    def test_rag_search_tool_k_parameter_validation(self):
+        """Testa validação do parâmetro k na RAGSearchTool"""
+        from .tools import RAGSearchTool
+
+        with patch("chatbot.tools.get_vectorstore") as mock_get_vectorstore:
+            mock_retriever = MagicMock()
+            mock_retriever.invoke.return_value = []
+
+            mock_vectorstore = MagicMock()
+            mock_vectorstore.as_retriever.return_value = mock_retriever
+            mock_get_vectorstore.return_value = mock_vectorstore
+
+            tool = RAGSearchTool()
+
+            # Testa com k=5
+            result = tool._run("test query", k=5)
+            mock_vectorstore.as_retriever.assert_called_with(search_kwargs={"k": 5})
+
+            # Testa com k padrão (3)
+            result = tool._run("test query")
+            mock_vectorstore.as_retriever.assert_called_with(search_kwargs={"k": 3})
