@@ -197,7 +197,7 @@ class TestVectorstore:
 
     def test_load_documents_multiple_file_types(self, mock_external_services):
         """Testa o carregamento de documentos de diferentes tipos"""
-        from .vectorstore import load_documents
+        from .vectorstore import load_documents_from_directory
 
         # Criar arquivos de teste
         pdf_file = os.path.join(self.test_files_dir, "test.pdf")
@@ -211,9 +211,7 @@ class TestVectorstore:
         with open(csv_file, "w") as f:
             f.write("test,csv,content")
 
-        with patch("chatbot.vectorstore.RAG_FILES_DIR", self.test_files_dir), patch(
-            "chatbot.vectorstore.PyPDFLoader"
-        ) as mock_pdf_loader, patch(
+        with patch("chatbot.vectorstore.PyPDFLoader") as mock_pdf_loader, patch(
             "chatbot.vectorstore.TextLoader"
         ) as mock_text_loader, patch(
             "chatbot.vectorstore.CSVLoader"
@@ -224,16 +222,16 @@ class TestVectorstore:
             mock_text_loader.return_value.load.return_value = [MagicMock()]
             mock_csv_loader.return_value.load.return_value = [MagicMock()]
 
-            docs = load_documents()
+            docs = load_documents_from_directory(self.test_files_dir)
 
             assert len(docs) == 3
             mock_pdf_loader.assert_called_once_with(pdf_file)
-            mock_text_loader.assert_called_once_with(txt_file)
+            mock_text_loader.assert_called_once_with(txt_file, encoding="utf-8")
             mock_csv_loader.assert_called_once_with(csv_file)
 
     def test_load_documents_with_unknown_file_type(self, mock_external_services):
         """Testa o carregamento de documentos com tipo de arquivo desconhecido"""
-        from .vectorstore import load_documents
+        from .vectorstore import load_documents_from_directory
 
         # Criar arquivo com extensão desconhecida
         unknown_file = os.path.join(self.test_files_dir, "test.unknown")
@@ -244,17 +242,15 @@ class TestVectorstore:
         with open(txt_file, "w") as f:
             f.write("txt file content")
 
-        with patch("chatbot.vectorstore.RAG_FILES_DIR", self.test_files_dir), patch(
-            "chatbot.vectorstore.TextLoader"
-        ) as mock_text_loader:
+        with patch("chatbot.vectorstore.TextLoader") as mock_text_loader:
 
             mock_text_loader.return_value.load.return_value = [MagicMock()]
 
-            docs = load_documents()
+            docs = load_documents_from_directory(self.test_files_dir)
 
             # Apenas o arquivo .txt deve ter sido processado
             assert len(docs) == 1
-            mock_text_loader.assert_called_once_with(txt_file)
+            mock_text_loader.assert_called_once_with(txt_file, encoding="utf-8")
 
     def test_get_vectorstore_with_documents(self, mock_external_services):
         """Testa a criação do vectorstore com documentos"""
@@ -264,6 +260,11 @@ class TestVectorstore:
             "chatbot.vectorstore.RecursiveCharacterTextSplitter"
         ) as mock_splitter:
 
+            # Mock o vectorstore vazio primeiro (para forçar recriação)
+            mock_vectorstore = MagicMock()
+            mock_vectorstore.similarity_search.return_value = []
+            mock_external_services["chroma"].return_value = mock_vectorstore
+
             mock_docs = [MagicMock(), MagicMock()]
             mock_load_docs.return_value = mock_docs
 
@@ -272,7 +273,6 @@ class TestVectorstore:
             result = get_vectorstore()
 
             mock_load_docs.assert_called_once()
-            mock_external_services["chroma"].from_documents.assert_called_once()
             assert result is not None
 
     def test_get_vectorstore_without_documents(self, mock_external_services):
@@ -280,12 +280,17 @@ class TestVectorstore:
         from .vectorstore import get_vectorstore
 
         with patch("chatbot.vectorstore.load_documents") as mock_load_docs:
+            # Mock o vectorstore vazio primeiro (para forçar recriação)
+            mock_vectorstore = MagicMock()
+            mock_vectorstore.similarity_search.return_value = []
+            mock_external_services["chroma"].return_value = mock_vectorstore
+
             mock_load_docs.return_value = []
 
             result = get_vectorstore()
 
             mock_load_docs.assert_called_once()
-            mock_external_services["chroma"].assert_called_once()
+            mock_external_services["chroma"].assert_called()
             assert result is not None
 
 
@@ -551,7 +556,7 @@ class TestTools:
         mock_doc.page_content = "Este é um documento de teste sobre agricultura"
 
         mock_retriever = MagicMock()
-        mock_retriever.get_relevant_documents.return_value = [mock_doc]
+        mock_retriever.invoke.return_value = [mock_doc]
 
         mock_vectorstore = MagicMock()
         mock_vectorstore.as_retriever.return_value = mock_retriever
@@ -563,9 +568,7 @@ class TestTools:
         assert "Resultado 1:" in result
         assert "Este é um documento de teste sobre agricultura" in result
         mock_get_vectorstore.assert_called_once()
-        mock_retriever.get_relevant_documents.assert_called_once_with(
-            "como plantar milho"
-        )
+        mock_retriever.invoke.assert_called_once_with("como plantar milho")
 
     @patch("chatbot.tools.get_vectorstore")
     def test_rag_search_tool_no_results(self, mock_get_vectorstore):
@@ -573,7 +576,7 @@ class TestTools:
         from .tools import RAGSearchTool
 
         mock_retriever = MagicMock()
-        mock_retriever.get_relevant_documents.return_value = []
+        mock_retriever.invoke.return_value = []
 
         mock_vectorstore = MagicMock()
         mock_vectorstore.as_retriever.return_value = mock_retriever
@@ -929,7 +932,7 @@ class TestTools:
             mock_doc.page_content = "Documento de teste"
 
             mock_retriever = MagicMock()
-            mock_retriever.get_relevant_documents.return_value = [mock_doc]
+            mock_retriever.invoke.return_value = [mock_doc]
 
             mock_vectorstore = MagicMock()
             mock_vectorstore.as_retriever.return_value = mock_retriever

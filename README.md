@@ -116,7 +116,7 @@ OPENAI_API_KEY=sua_chave_openai_aqui
 EVOLUTION_INSTANCE_NAME=chatbot  # Deve ser idêntico ao nome da instância no painel
 AUTHENTICATION_API_KEY=sua_chave_auth_aqui
 
-# Prompt do AgriAssist (personalize conforme necessário)
+# Prompt (personalize conforme necessário)
 AI_SYSTEM_PROMPT='Você é um assistente técnico agrícola virtual...'  # Ver .env.example para o prompt completo
 ```
 
@@ -188,7 +188,7 @@ docker-compose up --build
 | `/api/sensors/webhook/` | POST   | Webhook para sensores (futuro)  |
 | `/admin/`               | GET    | Painel administrativo Django    |
 | `/api/schema/`          | GET    | Documentação OpenAPI            |
-| `/health/`              | GET    | Health check dos serviços       |
+| `/ht/`                  | GET    | Health check dos serviços       |
 
 ### Fluxo de Funcionamento
 
@@ -304,7 +304,7 @@ docker-compose logs evolution-api
 docker-compose logs
 
 # Health check
-curl http://localhost:8000/health/
+curl http://localhost:8000/ht/
 ```
 
 ## 📊 Monitoramento
@@ -320,9 +320,7 @@ curl http://localhost:8000/health/
 O sistema inclui health checks em:
 
 ```
-http://localhost:8000/health/
+http://localhost:8000/ht/
 ```
 
 ---
-
-**⭐ Se este projeto foi útil, considere dar uma estrela no repositório!**

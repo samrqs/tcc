@@ -57,7 +57,7 @@ class RAGSearchTool(BaseTool):
 
             # Busca documentos relevantes
             logger.debug(f"Executando busca por documentos relevantes...")
-            docs = retriever.get_relevant_documents(query)
+            docs = retriever.invoke(query)
             logger.info(f"RAG Search - Documentos encontrados: {len(docs)}")
 
             if not docs:
