@@ -518,3 +518,11 @@ Para adicionar novos tipos de sensores:
 2. **Crie migrations**: `python manage.py makemigrations`
 3. **Aplique**: `python manage.py migrate`
 4. **Atualize** a descrição da ferramenta `sql_select`
+
+## 👥 Desenvolvedores
+
+- [Leonardo Arouche](https://github.com/LeoPDA)
+- [Kayky Vasconcelos](https://github.com/kaykyvasconcelos)
+- [Rafael Ferreira Machado](https://github.com/rafaelmachadobr)
+- [Samara Marques](https://github.com/samrqs)
+- [Thais](https://github.com/thaisisi)
