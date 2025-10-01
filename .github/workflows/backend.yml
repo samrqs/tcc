@@ -31,6 +31,8 @@ jobs:
             -e POSTGRES_ENGINE=${{ secrets.POSTGRES_ENGINE }} \
             -e POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
             -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
+            -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+            -e POSTGRES_HOST=${{ secrets.POSTGRES_HOST }} \
             -e POSTGRES_PORT=${{ secrets.POSTGRES_PORT }} \
             -e EVOLUTION_API_URL=${{ secrets.EVOLUTION_API_URL }} \
             -e EVOLUTION_INSTANCE_NAME=${{ secrets.EVOLUTION_INSTANCE_NAME }} \
