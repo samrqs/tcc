@@ -696,4 +696,4 @@ class SQLSelectTool(BaseTool):
 
 def get_tools() -> List[BaseTool]:
     """Retorna a lista de ferramentas disponíveis."""
-    return [RAGSearchTool(), WeatherTool(), WebScrapingTool(), SQLSelectTool()]
+    return [WeatherTool(), WebScrapingTool(), SQLSelectTool()]
