@@ -76,4 +76,5 @@ jobs:
             -e DEBOUNCE_SECONDS=${{ secrets.DEBOUNCE_SECONDS }} \
             -e BUFFER_TTL=${{ secrets.BUFFER_TTL }} \
             -e OPENWEATHER_API_KEY=${{ secrets.OPENWEATHER_API_KEY }} \
-            --name tcc-backend ${{ secrets.DOCKERHUB_REPOSITORY }}:latest
+            --name tcc-backend \
+            ${{ secrets.DOCKERHUB_REPOSITORY }}:latest
