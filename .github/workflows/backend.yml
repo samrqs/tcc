@@ -18,9 +18,9 @@ jobs:
       - name: Remove docker container
         run: sudo docker rm -f tcc-backend
 
-      - name: Run docker container
+      - name: Show docker run command
         run: |
-          echo docker run -d -p 8000:8000 \
+          echo "docker run -d -p 8000:8000 \
             --restart always \
             -e DEBUG=${{ secrets.DEBUG }} \
             -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
@@ -45,4 +45,4 @@ jobs:
             -e DEBOUNCE_SECONDS=${{ secrets.DEBOUNCE_SECONDS }} \
             -e BUFFER_TTL=${{ secrets.BUFFER_TTL }} \
             -e OPENWEATHER_API_KEY=${{ secrets.OPENWEATHER_API_KEY }} \
-            --name tcc-backend ${{ secrets.DOCKERHUB_REPOSITORY }}:latest
+            --name tcc-backend ${{ secrets.DOCKERHUB_REPOSITORY }}:latest"
