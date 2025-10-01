@@ -9,7 +9,6 @@ jobs:
 
   deploy:
     name: "Deploy to VM"
-    needs: build-and-push
     runs-on: self-hosted
 
     steps:
