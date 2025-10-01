@@ -29,6 +29,12 @@ jobs:
             -e OPENAI_MODEL_NAME=${{ secrets.OPENAI_MODEL_NAME }} \
             -e OPENAI_MODEL_TEMPERATURE=${{ secrets.OPENAI_MODEL_TEMPERATURE }} \
             -e POSTGRES_ENGINE=${{ secrets.POSTGRES_ENGINE }} \
+            -e POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
+            -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
+            -e POSTGRES_PORT=${{ secrets.POSTGRES_PORT }} \
+            -e EVOLUTION_API_URL=${{ secrets.EVOLUTION_API_URL }} \
+            -e EVOLUTION_INSTANCE_NAME=${{ secrets.EVOLUTION_INSTANCE_NAME }} \
+            -e AUTHENTICATION_API_KEY=${{ secrets.AUTHENTICATION_API_KEY }} \
             -e CACHE_REDIS_URI=${{ secrets.CACHE_REDIS_URI }} \
             -e VECTOR_STORE_PATH=${{ secrets.VECTOR_STORE_PATH }} \
             -e RAG_FILES_DIR=${{ secrets.RAG_FILES_DIR }} \
