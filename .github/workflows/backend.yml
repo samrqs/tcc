@@ -4,11 +4,42 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "backend/**"
 
 jobs:
+  build-and-push:
+    name: "Build and push (Backend)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate sha
+        id: generate_sha
+        run: |
+          SHA=$(echo $GITHUB_SHA | head -c7)
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build docker image
+        run: docker build -t ${{ secrets.DOCKERHUB_REPOSITORY}}:${{ steps.generate_sha.outputs.sha }} -f backend/Dockerfile backend
+
+      - name: Log into the container registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_REPOSITORY}}:${{ steps.generate_sha.outputs.sha }}
+          docker tag ${{ secrets.DOCKERHUB_REPOSITORY}}:${{ steps.generate_sha.outputs.sha }} ${{ secrets.DOCKERHUB_REPOSITORY}}:latest
+          docker push ${{ secrets.DOCKERHUB_REPOSITORY}}:latest
 
   deploy:
     name: "Deploy to VM"
+    needs: build-and-push
     runs-on: self-hosted
 
     steps:
@@ -34,6 +65,7 @@ jobs:
             -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
             -e POSTGRES_HOST=${{ secrets.POSTGRES_HOST }} \
             -e POSTGRES_PORT=${{ secrets.POSTGRES_PORT }} \
+            -e AI_SYSTEM_PROMPT=${{ secrets.AI_SYSTEM_PROMPT }} \
             -e EVOLUTION_API_URL=${{ secrets.EVOLUTION_API_URL }} \
             -e EVOLUTION_INSTANCE_NAME=${{ secrets.EVOLUTION_INSTANCE_NAME }} \
             -e AUTHENTICATION_API_KEY=${{ secrets.AUTHENTICATION_API_KEY }} \
@@ -45,4 +77,3 @@ jobs:
             -e BUFFER_TTL=${{ secrets.BUFFER_TTL }} \
             -e OPENWEATHER_API_KEY=${{ secrets.OPENWEATHER_API_KEY }} \
             --name tcc-backend ${{ secrets.DOCKERHUB_REPOSITORY }}:latest
-
