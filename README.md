@@ -23,7 +23,7 @@ Sistema inteligente de assistência técnica agrícola que integra **WhatsApp**,
 |--------|------------|
 | [Backend](./backend/README.md) | API responsável pelo processamento de dados, integração e persistência. |
 | [Frontend](./frontend/README.md) | Colocar aqui |
-| [Hardware](./hardware/README.md) | Código-fonte Arduino, montagem do circuito e configuração do ESP32 LoRa OLED V2. |
+| [Hardware](./hardware/README.MD) | Código-fonte Arduino, montagem do circuito e configuração do ESP32 LoRa OLED V2. |
 
 **Infrastructure:**
 
