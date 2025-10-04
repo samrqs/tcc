@@ -12,16 +12,13 @@
 
 ## 🧠 Arquitetura Básica
 
-[SENSOR RS485]
-│
-[Módulo MAX485]
-│ UART
-[ESP32 LoRa V2]
-│ LoRa
-[Outro ESP32 LoRa V2 Receptor]
-│
-[Plataforma / WhatsApp]
-
+| Etapa | Componente                      | Função                                                  |
+| ----- | ------------------------------- | ------------------------------------------------------- |
+| 🌾    | **Sensores RS485**              | Captura dados do solo (pH, umidade, temperatura, NPK)   |
+| 🔌    | **Módulo MAX485**               | Faz a conversão do sinal RS485 → UART                   |
+| 📡    | **ESP32 LoRa V2 (Transmissor)** | Envia os dados via rede LoRa                            |
+| 📶    | **ESP32 LoRa V2 (Receptor)**    | Recebe os dados LoRa e envia para o servidor            |
+| 💬    | **Plataforma / WhatsApp**       | Exibe as informações e permite interação com o produtor |
 
 O **sensor RS485** coleta os dados do solo, o **MAX485** faz a conversão de sinal para o **ESP32 LoRa**, que transmite as informações via **LoRa** para outro módulo ESP32 receptor.
 
@@ -92,14 +89,6 @@ Os arquivos `.ino` contêm o código-fonte para o funcionamento do sistema.
 Abra o arquivo principal no Arduino IDE e certifique-se de que todas as bibliotecas estejam corretamente instaladas.
 
 > **Dica:** mantenha o nome da pasta igual ao nome do arquivo `.ino`, pois o Arduino IDE exige isso para compilar corretamente.
-
-Exemplo:
-/Plataforma_Agricola/
-├── Plataforma_Agricola.ino
-├── config.h
-├── sensor.h
-└── lora_comm.h
-
 
 ---
 
