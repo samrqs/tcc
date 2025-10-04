@@ -7,18 +7,41 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Node modules and build
+node_modules/
+dist/
+dist-ssr/
 *.local
+
+# Environment variables
+.env
+.env.* 
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# MacOS system files
+.DS_Store
+
+# Optional npm cache
+.npm/
+
+# Optional Yarn cache
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Optional pnpm cache
+.pnpm-store/
+
+# Vite
+.vite/
