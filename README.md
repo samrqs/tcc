@@ -137,7 +137,7 @@ graph TB
 - **pytest-django** ^4.11.1 - Testes Django
 - **pytest-cov** ^6.3.0 - Cobertura de testes
 
-## 📋 Pré-requisitos (backend)
+### 📋 Pré-requisitos (backend)
 
 - **Docker** e **Docker Compose**
 - **Git**
@@ -168,7 +168,7 @@ graph TB
 
 ---
 
-## 📋 Pré-requisitos (hardware)
+### 📋 Pré-requisitos (hardware)
 
 - **Arduino IDE** instalada (≥ 2.3.0)  
   🔗 [https://www.arduino.cc/en/software](https://www.arduino.cc/en/software)
