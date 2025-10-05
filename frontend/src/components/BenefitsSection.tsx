@@ -53,9 +53,9 @@ const BenefitsSection = () => {
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-foreground">{benefit.title}</h3>
                 <p className="text-muted-foreground mb-4">{benefit.description}</p>
-                <div className="inline-block px-4 py-2 bg-accent/10 rounded-full">
+                {/* <div className="inline-block px-4 py-2 bg-accent/10 rounded-full">
                   <span className="text-accent font-semibold">{benefit.stat}</span>
-                </div>
+                </div> */}
               </div>
             );
           })}
