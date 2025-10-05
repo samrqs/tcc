@@ -102,6 +102,7 @@ Abra o arquivo principal no Arduino IDE e certifique-se de que todas as bibliote
 | GPIO16 | DI | Transmissão RS485 |
 | GPIO4 | DE/RE (ligados juntos) | Habilitação do driver |
 
+Ter uma fonte de alimentação separada para o sensor RS485 entre 12 a 30V.
 ---
 
 ## 🚀 Upload do Código

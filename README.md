@@ -17,19 +17,13 @@ Sistema inteligente de assistência técnica agrícola que integra **WhatsApp**,
 
 ## 🏗️ Arquitetura do Sistema
 
-### Stack Tecnológica
+### O projeto é dividido em três módulos principais:
 
-**Backend:**
-
-- **Django 5.2.6** - Framework web principal
-- **Django REST Framework** - API REST para webhooks e sensores
-- **LangChain** - Framework para agentes com ferramentas
-- **OpenAI GPT-4o-mini** - Modelo de linguagem especializado
-- **ChromaDB** - Vector database para RAG com OpenAI Embeddings
-- **PostgreSQL** - Dados dos sensores IoT e histórico
-- **Redis** - Cache, sessões e buffer de mensagens
-- **BeautifulSoup** - Web scraping para dados de mercado
-- **OpenWeatherMap API** - Dados meteorológicos em tempo real
+| Módulo | Descrição |
+|--------|------------|
+| [Backend](./backend/README.md) | API responsável pelo processamento de dados, integração e persistência. |
+| [Frontend](./frontend/README.md) | Colocar aqui |
+| [Hardware](./hardware/README.MD) | Código-fonte Arduino, montagem do circuito e configuração do ESP32 LoRa OLED V2. |
 
 **Infrastructure:**
 
@@ -120,7 +114,7 @@ graph TB
 
 ## 🚀 Tecnologias e Dependências
 
-### Dependências Principais
+### Dependências Principais (backend)
 
 | Tecnologia            | Versão                  | Propósito Agrícola               |
 | --------------------- | ----------------------- | -------------------------------- |
@@ -137,114 +131,50 @@ graph TB
 | PostgreSQL            | psycopg2-binary ^2.9.10 | Dados sensores + histórico       |
 | Python-decouple       | ^3.8                    | Configuração segura              |
 
-### Dependências de Desenvolvimento
+### Dependências de Desenvolvimento (backend)
 
 - **pytest** ^8.4.2 - Framework de testes
 - **pytest-django** ^4.11.1 - Testes Django
 - **pytest-cov** ^6.3.0 - Cobertura de testes
 
-## 📋 Pré-requisitos
+### 📋 Pré-requisitos (backend)
 
 - **Docker** e **Docker Compose**
 - **Git**
 - **Chave da OpenAI API**
 - **Instância EvolutionAPI configurada**
 
-## 🛠️ Instalação e Configuração
+### Dependências Principais (hardware)
 
-### 1. Clone o Repositório
+| Tecnologia / Biblioteca | Versão / Fabricante | Função no Projeto Agrícola |
+| ----------------------- | ------------------  | -------------------------- |
+| Arduino IDE             | ≥2.3.0              | Ambiente de desenvolvimento|
+| Heltec ESP32 Dev-Boards | by Heltec Automation| Suporte à placa ESP32 LoRa V2 |
+| LoRa                    | by Sandeep Mistry   | Comunicação sem fio LoRa entre módulos |
+| ArduinoJson             | by Benoit Blanchon  | Estruturação e parse de dados em JSON |
+| Driver CP210x           | Silicon Labs        | Reconhecimento USB do ESP32 LoRa V2 |
+| MAX485 UART Module      | TTL ↔ RS485 Converter  | Interface entre sensor e ESP32 |
+| Sensor RS485 (pH, Umidade, Temp, NPK, Salinidade) | RS485 Modbus  | Coleta de dados do solo |
+| Protoboard 400 pontos   |                         | Montagem de testes e prototipagem |
 
-```bash
-git clone https://github.com/samrqs/tcc
-cd tcc
-cd backend
-```
+---
 
-### 2. Configure as Variáveis de Ambiente
+### Dependências de Desenvolvimento (hardware)
 
-Copie o arquivo de exemplo e configure suas chaves:
+- **Biblioteca Heltec ESP32** – recursos de OLED, LoRa e WiFi integrados  
+- **Biblioteca LoRa** – comunicação via rádio entre módulos  
+- **Biblioteca ArduinoJson** – formatação dos dados coletados para envio  
+- **Drivers CP210x** – reconhecimento do dispositivo pela porta serial
 
-```bash
-cp .env.example .env
-```
+---
 
-**⚠️ Configurações Obrigatórias:**
+### 📋 Pré-requisitos (hardware)
 
-Edite o arquivo `.env` e configure:
+- **Arduino IDE** instalada (≥ 2.3.0)  
+  🔗 [https://www.arduino.cc/en/software](https://www.arduino.cc/en/software)
 
-```bash
-# Chaves de API
-OPENAI_API_KEY=sua_chave_openai_aqui
-
-# EvolutionAPI
-EVOLUTION_INSTANCE_NAME=chatbot  # Deve ser idêntico ao nome da instância no painel
-AUTHENTICATION_API_KEY=sua_chave_auth_aqui
-
-# Prompt (personalize conforme necessário)
-AI_SYSTEM_PROMPT='Você é um assistente técnico agrícola virtual...'  # Ver .env.example para o prompt completo
-```
-
-### 3. Prepare a Base de Conhecimento Agrícola
-
-Adicione documentos técnicos na pasta `rag_files/`:
-
-```bash
-rag_files/
-├── manual_cultivo_milho.pdf
-├── controle_pragas_soja.pdf
-├── boas_praticas_irrigacao.txt
-├── tabela_adubacao_npk.csv
-└── calendario_agricola.txt
-```
-
-**Tipos de Documentos Recomendados:**
-
-- **Manuais Técnicos** (PDF) - Cultivo, manejo, equipamentos
-- **Guias de Pragas** (PDF/TXT) - Identificação e controle
-- **Tabelas Técnicas** (CSV) - Adubação, espaçamento, doses
-- **Calendários Agrícolas** (TXT) - Épocas de plantio/colheita
-- **Boletins Técnicos** (PDF) - Pesquisas, novas variedades
-
-Os documentos serão automaticamente:
-
-1. Processados e vetorizados
-2. Movidos para `rag_files/processed/`
-3. Indexados no Chroma DB
-
-### 4. Inicie os Serviços
-
-```bash
-docker-compose up --build
-```
-
-**Serviços iniciados:**
-
-- **🤖 EvolutionAPI**: `http://localhost:8080`
-- **🐍 Django API**: `http://localhost:8000`
-- **🗄️ PostgreSQL**: `localhost:5432`
-- **⚡ Redis**: `localhost:6379`
-
-### 5. Configure o WhatsApp
-
-1. **Acesse o painel EvolutionAPI:**
-
-   ```
-   http://localhost:8080/manager
-   ```
-
-2. **Crie uma nova instância:**
-
-   - Nome: `chatbot` (deve ser igual ao `EVOLUTION_INSTANCE_NAME`)
-   - Configure conforme necessário
-
-3. **Conecte ao WhatsApp:**
-
-   - Escaneie o QR Code
-   - Aguarde a conexão
-
-4. **Configure o Webhook:**
-   - URL: `http://api:8000/api/chatbot/webhook/`
-   - Eventos: `MESSAGES_UPSERT`
+- **Gerenciador de placas configurado** com URL adicional:
+https://resource.heltec.cn/download/package_heltec_esp32_index.json
 
 ## 🛠️ Ferramentas do TCC
 
@@ -364,160 +294,10 @@ backend/
 ├── Dockerfile            # Imagem Python otimizada
 ├── pyproject.toml        # Poetry - dependências
 └── .env.example          # Variáveis (incluindo prompt personalizado)
+hardware/
+├── ReceiverLoraTCC.ino
+├── SenderLoraTCC.ino
 ```
-
-### Comandos de Desenvolvimento
-
-```bash
-# Testes
-docker-compose exec api python -m pytest
-
-# Logs em tempo real
-docker-compose logs -f api
-
-# Shell Django
-docker-compose exec api python manage.py shell
-
-# Migrations
-docker-compose exec api python manage.py makemigrations
-docker-compose exec api python manage.py migrate
-
-# Collectstatic
-docker-compose exec api python manage.py collectstatic
-```
-
-### Adicionando Novos Documentos
-
-1. Adicione arquivos em `rag_files/`
-2. Reinicie o container:
-   ```bash
-   docker-compose restart api
-   ```
-3. Os documentos serão automaticamente processados
-
-## 🚨 Solução de Problemas
-
-### Problemas Comuns
-
-**❌ "OpenAI API key not found"**
-
-```bash
-# Verifique se a chave está no .env
-grep OPENAI_API_KEY .env
-```
-
-**❌ "Instance not found"**
-
-- Verifique se `EVOLUTION_INSTANCE_NAME` no `.env` é igual ao nome no painel
-- Confirme se a instância está conectada no painel EvolutionAPI
-
-**❌ "Webhook not receiving messages"**
-
-- Verifique se o webhook está configurado: `http://api:8000/api/chatbot/webhook/`
-- Confirme se o evento `MESSAGES_UPSERT` está habilitado
-
-**❌ "TCC não encontra informações técnicas"**
-
-```bash
-# Verifique se há documentos agrícolas processados
-ls -la rag_files/processed/
-
-# Adicione mais documentos técnicos em rag_files/
-# Reinicie o container para reprocessar
-docker-compose restart api
-```
-
-**❌ "Dados dos sensores não aparecem"**
-
-```bash
-# Verifique se há dados na tabela sensors_sensordata
-docker-compose exec db psql -U postgres -d tcc -c "SELECT COUNT(*) FROM sensors_sensordata;"
-
-# Teste a ferramenta SQL diretamente no Django shell
-docker-compose exec api python manage.py shell
->>> from chatbot.tools import SQLSelectTool
->>> tool = SQLSelectTool()
->>> tool._run("SELECT COUNT(*) FROM sensors_sensordata")
-```
-
-### Logs e Debugging
-
-```bash
-# Logs do Django
-docker-compose logs api
-
-# Logs da EvolutionAPI
-docker-compose logs evolution-api
-
-# Logs completos
-docker-compose logs
-
-# Health check
-curl http://localhost:8000/ht/
-```
-
-## 📊 Monitoramento
-
-### Health Checks Disponíveis
-
-- **Database**: Conectividade PostgreSQL
-- **Cache**: Conectividade Redis
-- **Migrations**: Status das migrações Django
-
-### Métricas de Performance
-
-O sistema inclui health checks em:
-
-```
-http://localhost:8000/ht/
-```
-
-## 🌱 Customização do TCC
-
-### Personalizando o Prompt
-
-Edite a variável `AI_SYSTEM_PROMPT` no arquivo `.env` para:
-
-- Adaptar a linguagem para sua região
-- Incluir cultivos específicos da sua área
-- Personalizar exemplos para seus clientes
-- Adicionar informações sobre sua propriedade
-
-### Adicionando Novas Ferramentas
-
-1. **Crie uma nova ferramenta** em `chatbot/tools.py`:
-
-```python
-class MinhaFerramentaTool(BaseTool):
-    name: str = "minha_ferramenta"
-    description: str = "Descrição detalhada..."
-
-    def _run(self, parametros) -> str:
-        # Sua lógica aqui
-        return resultado
-```
-
-2. **Adicione à lista** em `get_tools()`:
-
-```python
-def get_tools() -> List[BaseTool]:
-    return [
-        RAGSearchTool(),
-        WeatherTool(),
-        WebScrapingTool(),
-        SQLSelectTool(),
-        MinhaFerramentaTool()  # Nova ferramenta
-    ]
-```
-
-### Expandindo a Base de Dados
-
-Para adicionar novos tipos de sensores:
-
-1. **Modifique o modelo** em `sensors/models.py`
-2. **Crie migrations**: `python manage.py makemigrations`
-3. **Aplique**: `python manage.py migrate`
-4. **Atualize** a descrição da ferramenta `sql_select`
 
 ## 👥 Desenvolvedores
 
