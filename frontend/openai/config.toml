@@ -1,0 +1,4 @@
+project_id = "gnllokagqqxkpurrzoqc"
+
+[functions.chat-soil]
+verify_jwt = false
