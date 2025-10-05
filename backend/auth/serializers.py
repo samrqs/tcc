@@ -1,6 +1,7 @@
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     username_field = "email"
@@ -12,10 +13,7 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
-        credentials = {
-            "email": attrs.get("email"),
-            "password": attrs.get("password")
-        }
+        credentials = {"email": attrs.get("email"), "password": attrs.get("password")}
         user = authenticate(**credentials)
         if user is None:
             raise serializers.ValidationError("Credenciais inválidas")
@@ -25,6 +23,7 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         data["user"] = {
             "id": user.id,
             "email": user.email,
-            "name": getattr(user, "name", "")
+            "name": getattr(user, "name", ""),
+            "phone": getattr(user, "phone", None),
         }
         return data
