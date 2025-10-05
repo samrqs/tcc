@@ -52,8 +52,8 @@ def check_user_permission(phone_number: str) -> tuple[bool, str]:
             return False, (
                 "🚫 Acesso não autorizado.\n\n"
                 "Este número de telefone não está cadastrado no sistema. "
-                "Para ter acesso ao assistente virtual, entre em contato com o administrador "
-                "para cadastrar seu número de telefone."
+                "Para ter acesso ao assistente virtual, acesse o site https://farmerassist.com.br "
+                "e clique em 'Criar Conta' para fazer seu cadastro."
             )
 
     except Exception as e:
