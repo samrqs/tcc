@@ -33,7 +33,7 @@ type Message = {
   content: string;
 };
 
-const MAX_QUESTIONS = 0; // limite de perguntas
+const MAX_QUESTIONS = 3; // limite de perguntas
 
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
