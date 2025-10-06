@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import List, Type
 from urllib.parse import urljoin, urlparse
 
@@ -7,6 +8,7 @@ import requests
 from asgiref.sync import sync_to_async
 from bs4 import BeautifulSoup
 from django.db import connection
+from django.utils import timezone as django_timezone
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
@@ -582,6 +584,34 @@ class SQLSelectTool(BaseTool):
                 [desc[0] for desc in cursor.description] if cursor.description else []
             )
             logger.debug(f"SQL Select Tool - Colunas retornadas: {columns}")
+
+            # Converte timestamps para fuso horário local configurado no Django
+            if results and cursor.description:
+                converted_results = []
+
+                for row in results:
+                    converted_row = []
+                    for value in row:
+                        # Verifica se é um timestamp/datetime
+                        if isinstance(value, datetime):
+                            # Converte para o timezone local configurado no Django
+                            if value.tzinfo is None:
+                                # Assume UTC e converte para timezone local
+                                value_utc = value.replace(tzinfo=timezone.utc)
+                                value_local = django_timezone.localtime(value_utc)
+                            else:
+                                # Já tem timezone, converte para timezone local
+                                value_local = django_timezone.localtime(value)
+                            # Retorna sem timezone info para facilitar leitura
+                            converted_row.append(value_local.replace(tzinfo=None))
+                        else:
+                            converted_row.append(value)
+                    converted_results.append(tuple(converted_row))
+
+                results = converted_results
+                logger.debug(
+                    "SQL Select Tool - Timestamps convertidos para horário local configurado no Django"
+                )
 
             return results, columns
 

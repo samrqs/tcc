@@ -1056,6 +1056,68 @@ class TestTools:
 
         assert "Erro ao executar query:" in result
 
+    @patch("chatbot.tools.connection")
+    def test_sql_select_tool_timezone_conversion(self, mock_connection):
+        """Testa a conversão de timezone para horário de Brasília no SQLSelectTool"""
+        from datetime import datetime, timezone
+
+        from .tools import SQLSelectTool
+
+        # Mock do cursor
+        mock_cursor = MagicMock()
+        mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
+
+        # Simula timestamp UTC vindo do banco (15:30 UTC)
+        utc_timestamp = datetime(
+            2025, 10, 6, 15, 30, 0
+        )  # Naive datetime (sem timezone)
+        utc_timestamp_aware = datetime(
+            2025, 10, 6, 18, 45, 0, tzinfo=timezone.utc
+        )  # Com timezone UTC
+
+        mock_results = [
+            (1, utc_timestamp, 25.5),  # timestamp naive
+            (2, utc_timestamp_aware, 26.0),  # timestamp com timezone
+            (3, "não é timestamp", 27.0),  # valor que não é timestamp
+        ]
+
+        mock_cursor.fetchall.return_value = mock_results
+        mock_cursor.description = [
+            ("id", None),
+            ("timestamp", None),
+            ("temperatura", None),
+        ]
+
+        tool = SQLSelectTool()
+        results, columns = tool._execute_query_sync(
+            "SELECT id, timestamp, temperatura FROM sensors_sensordata LIMIT 3", []
+        )
+
+        # Verifica se todos os registros foram processados
+        assert len(results) == 3
+
+        # Primeiro registro: timestamp naive (assumido como UTC) convertido para Brasília
+        first_row = results[0]
+        converted_naive = first_row[1]
+        # 15:30 UTC deve virar 12:30 em Brasília (UTC-3)
+        assert converted_naive.hour == 12
+        assert converted_naive.minute == 30
+        assert (
+            converted_naive.tzinfo is None
+        )  # timezone removido para facilitar leitura
+
+        # Segundo registro: timestamp com timezone UTC convertido para Brasília
+        second_row = results[1]
+        converted_aware = second_row[1]
+        # 18:45 UTC deve virar 15:45 em Brasília (UTC-3)
+        assert converted_aware.hour == 15
+        assert converted_aware.minute == 45
+        assert converted_aware.tzinfo is None  # timezone removido
+
+        # Terceiro registro: valor que não é timestamp deve permanecer inalterado
+        third_row = results[2]
+        assert third_row[1] == "não é timestamp"
+
     @pytest.mark.asyncio
     async def test_sql_select_tool_arun(self):
         """Testa a execução assíncrona da SQLSelectTool"""
