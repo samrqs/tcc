@@ -364,28 +364,41 @@ const ChatBot = () => {
               )}
             </div>
           ) : (
-            <form
-              onSubmit={handleSubmit}
-              className="p-4 border-t bg-background"
-            >
-              <div className="flex gap-2">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Digite sua pergunta..."
-                  disabled={isLoading || isLimitReached}
-                  className="flex-1"
-                />
+            <div className="p-4 border-t bg-background space-y-3">
+              <form onSubmit={handleSubmit}>
+                <div className="flex gap-2">
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Digite sua pergunta..."
+                    disabled={isLoading || isLimitReached}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isLoading || !input.trim() || isLimitReached}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </form>
+              {user && (
                 <Button
-                  type="submit"
-                  size="sm"
-                  disabled={isLoading || !input.trim() || isLimitReached}
-                  className="bg-primary hover:bg-primary/90"
+                  onClick={() =>
+                    window.open(
+                      `https://api.whatsapp.com/send?phone=${config.whatsapp.phoneNumber}`,
+                      "_blank"
+                    )
+                  }
+                  className="w-full bg-green-600 hover:bg-green-700"
                 >
-                  <Send className="h-4 w-4" />
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Continuar no WhatsApp
                 </Button>
-              </div>
-            </form>
+              )}
+            </div>
           )}
         </Card>
       )}
