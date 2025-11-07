@@ -1,5 +1,6 @@
 import logging
 
+from chatbot.chains import get_agent_executor
 from chatbot.evolution_api import send_whatsapp_message
 from rest_framework import permissions, status, viewsets
 from rest_framework.response import Response
@@ -67,19 +68,19 @@ class SensorWebhookView(APIView):
         """
         Formata a mensagem de alerta para envio via WhatsApp com recomendações
         """
-        mensagem = f"🌾 *ALERTA DE SENSORES - {cultivo.upper()}*\n\n"
+        mensagem = f"🌾 *ALERTA DE SOLO - {cultivo.upper()}*\n\n"
         mensagem += f"⏰ {sensor_data.timestamp.strftime('%d/%m/%Y %H:%M')}\n\n"
         mensagem += "*Parâmetros fora do limite ideal:*\n\n"
 
         for alerta in alertas:
             mensagem += f"{alerta}\n"
 
-        # Adiciona recomendações baseadas nos alertas
-        recomendacoes = self._generate_recommendations(alertas, sensor_data)
+        # Adiciona recomendações baseadas nos alertas usando o agente de IA
+        recomendacoes = self._generate_recommendations(alertas, sensor_data, cultivo)
         if recomendacoes:
-            mensagem += f"\n� *RECOMENDAÇÕES:*\n\n{recomendacoes}"
+            mensagem += f"\n🔧 *RECOMENDAÇÕES:*\n\n{recomendacoes}"
 
-        mensagem += "\n�📊 *Valores atuais completos:*\n"
+        mensagem += "\n📊 *Valores atuais completos:*\n"
         mensagem += f"• Umidade: {sensor_data.umidade:.1f}%\n"
         mensagem += f"• Temperatura: {sensor_data.temperatura:.1f}°C\n"
         mensagem += f"• pH: {sensor_data.ph:.1f}\n"
@@ -91,86 +92,109 @@ class SensorWebhookView(APIView):
 
         return mensagem
 
-    def _generate_recommendations(self, alerts, sensor_data):
+    def _generate_recommendations(self, alerts, sensor_data, crop_name):
         """
-        Gera recomendações personalizadas baseadas nos alertas detectados
+        Gera recomendações personalizadas usando o agente de IA baseado nos alertas detectados
+        """
+        try:
+            # Prepara o contexto completo para o agente
+            context = f"""
+📊 **CONTEXTO DO ALERTA - {crop_name.upper()}**
+
+🚨 **Alertas Detectados:**
+{chr(10).join(f'- {alert}' for alert in alerts)}
+
+📈 **Dados Atuais dos Sensores:**
+- Umidade: {sensor_data.umidade:.1f}%
+- Temperatura: {sensor_data.temperatura:.1f}°C
+- pH: {sensor_data.ph:.1f}
+- Nitrogênio: {sensor_data.nitrogenio:.0f} mg/kg
+- Fósforo: {sensor_data.fosforo:.0f} mg/kg
+- Potássio: {sensor_data.potassio:.0f} mg/kg
+- Condutividade: {sensor_data.condutividade:.0f} µS/cm
+- Salinidade: {sensor_data.salinidade:.0f} mg/L
+- TDS: {sensor_data.tds:.0f} mg/L
+
+⏰ **Timestamp:** {sensor_data.timestamp.strftime('%d/%m/%Y %H:%M')}
+
+🌾 **Cultivo:** {crop_name}
+"""
+
+            # Monta a pergunta para o agente
+            prompt = f"""{context}
+
+Com base nos alertas detectados acima e nos dados atuais dos sensores, forneça recomendações técnicas e práticas para o agricultor. 
+
+**IMPORTANTE:**
+- Seja objetivo e direto
+- Forneça ações concretas que podem ser tomadas AGORA
+- Considere o cultivo específico ({crop_name})
+- Limite a resposta a 500 caracteres para caber no WhatsApp
+- Use emojis para facilitar a leitura
+- Não repita as informações dos alertas, foque nas AÇÕES
+
+Formato esperado:
+🔧 *RECOMENDAÇÕES:*
+
+[suas recomendações aqui]
+"""
+
+            logger.info(f"Solicitando recomendações ao agente de IA para {crop_name}")
+
+            # Obtém o agente executor
+            agent_executor = get_agent_executor()
+
+            # Executa o agente com chat_history vazio (chamada única sem contexto anterior)
+            result = agent_executor.invoke({"input": prompt, "chat_history": []})
+
+            # Extrai a resposta do agente
+            ai_response = result.get("output", "")
+
+            logger.info(
+                f"Recomendações geradas pelo agente de IA: {len(ai_response)} caracteres"
+            )
+
+            # Remove o prefixo "🔧 *RECOMENDAÇÕES:*" se o agente já o incluiu
+            if "🔧 *RECOMENDAÇÕES:*" in ai_response:
+                ai_response = ai_response.replace("🔧 *RECOMENDAÇÕES:*", "").strip()
+
+            return ai_response or self._generate_fallback_recommendations(alerts)
+
+        except Exception as e:
+            logger.error(f"Erro ao gerar recomendações com IA: {str(e)}")
+            # Fallback para recomendações estáticas em caso de erro
+            return self._generate_fallback_recommendations(alerts)
+
+    def _generate_fallback_recommendations(self, alerts):
+        """
+        Gera recomendações básicas como fallback caso o agente de IA falhe
         """
         recommendations = []
 
-        for alert in alerts:
-            # Recomendações para UMIDADE
-            if "UMIDADE BAIXA" in alert:
-                recommendations.append(
-                    "💧 *Umidade Baixa:*\n   → Aumentar irrigação gradualmente\n   → Verificar sistema de irrigação\n   → Considerar mulching para retenção de água"
-                )
-            elif "UMIDADE ALTA" in alert:
-                recommendations.append(
-                    "💧 *Umidade Alta:*\n   → Reduzir ou suspender irrigação\n   → Melhorar drenagem do solo\n   → Evitar encharcamento (risco de doenças)"
-                )
+        # Recomendações básicas por tipo de alerta
+        if any("UMIDADE" in alert for alert in alerts):
+            recommendations.append("💧 Ajuste a irrigação conforme necessário")
 
-            # Recomendações para TEMPERATURA
-            if "TEMPERATURA BAIXA" in alert:
-                recommendations.append(
-                    "🌡️ *Temperatura Baixa:*\n   → Monitorar previsão de geadas\n   → Considerar cobertura/proteção das plantas\n   → Avaliar época de plantio"
-                )
-            elif "TEMPERATURA ALTA" in alert:
-                recommendations.append(
-                    "🌡️ *Temperatura Alta:*\n   → Aumentar frequência de irrigação\n   → Irrigar nas horas mais frescas\n   → Monitorar estresse hídrico das plantas"
-                )
+        if any("TEMPERATURA" in alert for alert in alerts):
+            recommendations.append("🌡️ Monitore as condições climáticas")
 
-            # Recomendações para pH
-            if "pH BAIXO" in alert:
-                recommendations.append(
-                    f"⚗️ *pH Baixo (Solo Ácido):*\n   → Aplicar calcário dolomítico\n   → Fazer análise completa do solo\n   → pH atual: {sensor_data.ph:.1f} (ideal: 6.0-7.0)"
-                )
-            elif "pH ALTO" in alert:
-                recommendations.append(
-                    f"⚗️ *pH Alto (Solo Alcalino):*\n   → Aplicar enxofre elementar ou gesso\n   → Adicionar matéria orgânica\n   → pH atual: {sensor_data.ph:.1f} (ideal: 6.0-7.0)"
-                )
+        if any("pH" in alert for alert in alerts):
+            recommendations.append("⚗️ Realize análise de solo e correção de pH")
 
-            # Recomendações para NITROGÊNIO
-            if "NITROGÊNIO BAIXO" in alert:
-                recommendations.append(
-                    "🌾 *Nitrogênio Baixo:*\n   → Aplicar ureia ou sulfato de amônio\n   → Fazer adubação de cobertura\n   → Considerar plantio de leguminosas (fixam N)"
-                )
-            elif "NITROGÊNIO ALTO" in alert:
-                recommendations.append(
-                    "🌾 *Nitrogênio Alto:*\n   → Suspender adubação nitrogenada\n   → Aumentar irrigação (lixiviação moderada)\n   → Monitorar excesso vegetativo"
-                )
+        if any(
+            "NITROGÊNIO" in alert or "FÓSFORO" in alert or "POTÁSSIO" in alert
+            for alert in alerts
+        ):
+            recommendations.append("🌾 Ajuste o plano de adubação (NPK)")
 
-            # Recomendações para FÓSFORO
-            if "FÓSFORO BAIXO" in alert:
-                recommendations.append(
-                    "🌿 *Fósforo Baixo:*\n   → Aplicar superfosfato simples/triplo\n   → Usar fosfato natural (liberação gradual)\n   → Importante para raízes e floração"
-                )
-            elif "FÓSFORO ALTO" in alert:
-                recommendations.append(
-                    "🌿 *Fósforo Alto:*\n   → Suspender adubação fosfatada\n   → Pode bloquear absorção de zinco e ferro\n   → Monitorar sintomas de deficiência de micronutrientes"
-                )
+        if any("CONDUTIVIDADE" in alert or "SALINIDADE" in alert for alert in alerts):
+            recommendations.append("⚡ Atenção à salinidade do solo")
 
-            # Recomendações para POTÁSSIO
-            if "POTÁSSIO BAIXO" in alert:
-                recommendations.append(
-                    "🍃 *Potássio Baixo:*\n   → Aplicar cloreto de potássio (KCl)\n   → Usar sulfato de potássio em solos salinos\n   → Essencial para qualidade e resistência"
-                )
-            elif "POTÁSSIO ALTO" in alert:
-                recommendations.append(
-                    "🍃 *Potássio Alto:*\n   → Suspender adubação potássica\n   → Pode competir com cálcio e magnésio\n   → Monitorar equilíbrio nutricional"
-                )
-
-            # Recomendações para CONDUTIVIDADE/SALINIDADE
-            if "CONDUTIVIDADE ALTA" in alert or "SALINIDADE ALTA" in alert:
-                recommendations.append(
-                    "⚡ *Salinidade/Condutividade Alta:*\n   → Aumentar lâmina de irrigação (lixiviação)\n   → Usar água de melhor qualidade\n   → Evitar excesso de fertilizantes"
-                )
-
-        # Remove duplicatas mantendo a ordem
-        unique_recommendations = []
-        for recommendation in recommendations:
-            if recommendation not in unique_recommendations:
-                unique_recommendations.append(recommendation)
-
-        return "\n\n".join(unique_recommendations) if unique_recommendations else ""
+        return (
+            "\n".join(recommendations)
+            if recommendations
+            else "Consulte um agrônomo para orientações específicas."
+        )
 
 
 class CropAlertViewSet(viewsets.ModelViewSet):
