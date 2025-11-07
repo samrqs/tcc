@@ -2,12 +2,13 @@ import BenefitsSection from "@/components/BenefitsSection";
 import ChatBot from "@/components/ChatBot";
 import Hero from "@/components/Hero";
 import ProductSection from "@/components/ProductSection";
+import SoilConfigForm from "@/components/SoilConfigForm";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { Leaf, LogOut } from "lucide-react";
 
 const Index = () => {
-  const { user, logout, isLoading } = useAuth();
+  const { user, accessToken, logout, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -45,6 +46,12 @@ const Index = () => {
               className="text-muted-foreground hover:text-primary transition-colors"
             >
               Benefícios
+            </a>
+            <a
+              href="#soloconfig"
+              className="text-muted-foreground hover:text-primary transition-colors"
+            >
+              Configuração Solo
             </a>
             {user ? (
               <div className="flex items-center gap-4">
@@ -123,6 +130,7 @@ const Index = () => {
         <Hero />
         <ProductSection />
         <BenefitsSection />
+        {user && <SoilConfigForm accessToken={accessToken!} />}
       </div>
 
       <footer className="bg-muted/30 border-t border-border py-8">
