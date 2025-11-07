@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Leaf, LogOut } from "lucide-react";
 
 const Index = () => {
-  const { user, logout, isLoading } = useAuth();
+  const { user, accessToken, logout, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -130,7 +130,7 @@ const Index = () => {
         <Hero />
         <ProductSection />
         <BenefitsSection />
-        <SoilConfigForm />
+        {user && <SoilConfigForm accessToken={accessToken!} />}
       </div>
 
       <footer className="bg-muted/30 border-t border-border py-8">
