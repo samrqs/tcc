@@ -134,7 +134,7 @@ Certifique-se de configurar as mesmas **frequências** e **chaves** em ambos os 
 ---
 
 ## 📜 Licença
-Este projeto é distribuído sob a licença **MIT**, permitindo uso livre para fins acadêmicos e comerciais, com atribuição de crédito ao autor.
+Projeto acadêmico desenvolvido para **Trabalho de Conclusão de Curso (TCC)**.
 
 ---
 
