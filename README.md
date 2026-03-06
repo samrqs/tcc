@@ -22,7 +22,7 @@ Sistema inteligente de assistência técnica agrícola que integra **WhatsApp**,
 | Módulo | Descrição |
 |--------|------------|
 | [Backend](./backend/README.md) | API responsável pelo processamento de dados, integração e persistência. |
-| [Frontend](./frontend/README.md) | Colocar aqui |
+| [Frontend](./frontend/README.md) | Interface web da aplicação responsável pela visualização e configuração de dados agrícolas |
 | [Hardware](./hardware/README.MD) | Código-fonte Arduino, montagem do circuito e configuração do ESP32 LoRa OLED V2. |
 
 **Infrastructure:**
@@ -143,6 +143,45 @@ graph TB
 - **Git**
 - **Chave da OpenAI API**
 - **Instância EvolutionAPI configurada**
+
+### Dependências principais (frontend)
+
+As dependências principais utilizadas no projeto incluem:
+
+| Tecnologia           | Versão  | Propósito no sistema agrícola           |
+| -------------------- | ------- | --------------------------------------- |
+| React                | 18.3.1  | Construção da interface da aplicação    |
+| React Router DOM     | 6.30.1  | Navegação entre páginas                 |
+| TanStack React Query | 5.83.0  | Gerenciamento de dados vindos da API    |
+| React Hook Form      | 7.61.1  | Manipulação de formulários              |
+| Zod                  | 3.25.76 | Validação de dados de entrada           |
+| Recharts             | 2.15.4  | Visualização gráfica de dados agrícolas |
+| TailwindCSS          | 3.4.17  | Estilização responsiva                  |
+| Lucide React         | 0.462.0 | Biblioteca de ícones                    |
+
+---
+
+### Dependências de Desenvolvimento (frontend)
+
+- **Vite** ^5.4.20 - Bundler e dev server
+- **TypeScript** ^5.8.3 - TTipagem estática
+- **ESLint** ^9.32.0- Padronização e análise de código
+- **PostCSS** ^8.5.6 - Processamento de CSS
+- **Autoprefixer** ^10.4.21 - CCompatibilidade de CSS entre navegadores
+- **TailwindCSS** ^3.4.17 - Framework de CSS
+
+### 📋 Pré-requisitos (frontend)
+
+Antes de executar o projeto, é necessário ter instalado:
+
+* **Node.js 18+**
+* **NPM ou Yarn**
+* **Git**
+
+Opcional para ambiente containerizado:
+
+* **Docker**
+* **Docker Compose**
 
 ### Dependências Principais (hardware)
 
